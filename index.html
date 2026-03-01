@@ -328,11 +328,10 @@
 
     <script>
         // --- 1. CONFIGURATION ---
-        // TODO: Replace this with your actual GitHub Pages URL!
-        const GITHUB_URL = "https://yourusername.github.io/tracker-repo/"; 
+        const GITHUB_URL = "https://victoriakanbi.github.io/assignment-tracker/"; 
         
         const firebaseConfig = {
-            databaseURL: "https://victoriakanbi.github.io/assignment-tracker/"
+            databaseURL: "https://fluxgate-victor-default-rtdb.firebaseio.com"
         };
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
@@ -343,6 +342,7 @@
         let editingTaskId = null;
         let touchStartX = 0;
         let currentSwipedCard = null;
+        let cloudListenerActive = false; // Prevent multiple listeners
 
         // --- 2. FAIL-SAFE CONNECTION ENGINE ---
         async function checkConnection() {
@@ -386,13 +386,19 @@
 
         // --- 3. DATA SYNC ---
         function fetchTasks() {
-            checkConnection();
-            
-            if (isLocalMode) {
-                fetch('/api/tasks').then(r => r.json()).then(renderTasks).catch(() => { isLocalMode = false; });
-            } else {
-                database.ref('tasks').once('value', (snap) => renderTasks(snap.val())).catch(console.error);
-            }
+            checkConnection().then(() => {
+                if (isLocalMode) {
+                    fetch('/api/tasks').then(r => r.json()).then(renderTasks).catch(() => { isLocalMode = false; });
+                } else {
+                    // Activate real-time listener if in Global Mode and it's not active yet
+                    if (!cloudListenerActive) {
+                        database.ref('tasks').on('value', (snap) => renderTasks(snap.val()), (error) => {
+                            console.error("Firebase Read Error:", error);
+                        });
+                        cloudListenerActive = true;
+                    }
+                }
+            });
         }
 
         function renderTasks(data) {
@@ -438,11 +444,12 @@
                 document.getElementById('loadingOverlay').style.display = 'flex';
                 if (isLocalMode) {
                     await fetch('/api/tasks/complete', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id: taskId}) });
+                    fetchTasks(); // Local mode needs manual fetch
                 } else {
                     await database.ref('tasks/' + taskId).remove();
+                    // Note: Global mode listener automatically triggers renderTasks on remove
                 }
                 document.getElementById('loadingOverlay').style.display = 'none';
-                fetchTasks();
             }, 300);
         }
 
@@ -466,13 +473,15 @@
                 const ep = editingTaskId ? '/api/tasks/update' : '/api/tasks/add';
                 if (editingTaskId) { payload.id = editingTaskId; payload.this_occurrence_only = document.getElementById('thisOccurrenceOnly').checked; }
                 await fetch(ep, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+                fetchTasks(); // Local mode needs manual fetch
             } else {
                 const id = editingTaskId || Date.now().toString();
                 await database.ref('tasks/' + id).set(payload);
+                // Note: Global mode listener automatically triggers renderTasks on set
             }
 
             document.getElementById('loadingOverlay').style.display = 'none';
-            resetForm(); fetchTasks();
+            resetForm(); 
         }
 
         // --- 4. GESTURE & UI HELPERS ---
@@ -506,7 +515,15 @@
             document.getElementById('formTitle').innerText = 'Update Assignment';
         }
 
-        setInterval(fetchTasks, 5000); fetchTasks();
+        // Setup the loop to periodically check connection and trigger local fetch if needed
+        setInterval(() => {
+            if (isLocalMode) fetchTasks(); 
+            // We still want checkConnection to run to detect if the laptop goes offline
+            else checkConnection(); 
+        }, 5000); 
+        
+        // Initial fetch
+        fetchTasks();
     </script>
 </body>
 </html>
