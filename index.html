@@ -57,14 +57,15 @@
         .header-info p { margin: 4px 0 0 0; color: var(--primary); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
         
         .connection-pill {
-            padding: 4px 10px;
+            padding: 5px 12px;
             border-radius: 20px;
             font-size: 10px;
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
         }
+        .connection-pill:active { transform: scale(0.95); }
         .status-local { background: #DCFCE7; color: #166534; }
         .status-cloud { background: #DBEAFE; color: #1E40AF; }
         .status-reconnecting { background: #FEE2E2; color: #991B1B; animation: pulse 1.5s infinite; }
@@ -342,21 +343,39 @@
         let editingTaskId = null;
         let touchStartX = 0;
         let currentSwipedCard = null;
-        let cloudListenerActive = false; // Prevent multiple listeners
+        let cloudListenerActive = false;
 
         // --- 2. FAIL-SAFE CONNECTION ENGINE ---
         async function checkConnection() {
-            // 1. If we are ALREADY on the GitHub URL, just stay in Global Mode.
+            const urlParams = new URLSearchParams(window.location.search);
+            const localTarget = urlParams.get('local'); // E.g., 192.168.1.100:5000
+
+            // 1. If we are ALREADY on the GitHub URL
             if (window.location.hostname.includes('github.io')) {
                 isLocalMode = false;
-                updateUIConnectionStatus("Global Mode", "status-cloud");
+                const pill = document.getElementById('connectionStatus');
+                
+                // If we have a saved local IP, make the pill a clickable return button
+                if (localTarget) {
+                    pill.innerText = "🌐 Global (Tap for WiFi)";
+                    pill.className = "connection-pill status-cloud";
+                    pill.style.cursor = "pointer";
+                    if (!pill.onclick) {
+                        pill.onclick = () => {
+                            pill.innerText = "Switching...";
+                            window.location.href = "http://" + localTarget + "/add-task";
+                        };
+                    }
+                } else {
+                    updateUIConnectionStatus("Global Mode", "status-cloud");
+                }
                 return;
             }
 
             try {
-                // 2. Try to ping the laptop.
+                // 2. Try to ping the laptop. Extremely fast timeout.
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 1200);
+                const timeoutId = setTimeout(() => controller.abort(), 800); 
                 const res = await fetch('/api/tasks', { signal: controller.signal });
                 clearTimeout(timeoutId);
                 
@@ -364,16 +383,25 @@
                     isLocalMode = true;
                     localFailCount = 0;
                     updateUIConnectionStatus("Home WiFi Mode", "status-local");
-                } else { throw new Error(); }
+                    // Disable the return click if we are locally connected
+                    document.getElementById('connectionStatus').onclick = null;
+                    document.getElementById('connectionStatus').style.cursor = "default";
+                } else { 
+                    throw new Error("Server returned non-200"); 
+                }
             } catch (e) {
-                // 3. Ping failed. Laptop is unreachable.
-                isLocalMode = false;
-                localFailCount++;
-                updateUIConnectionStatus("Reconnecting...", "status-reconnecting");
-                
-                // 4. Force the redirect if we are NOT on GitHub and it failed 3 times.
-                if (!window.location.hostname.includes('github.io') && GITHUB_URL.startsWith('http') && localFailCount >= 3) {
-                     window.location.href = GITHUB_URL;
+                // 3. Ping failed. Laptop is unreachable. Instantly redirect if not on GitHub.
+                if (!window.location.hostname.includes('github.io') && GITHUB_URL.startsWith('http')) {
+                     updateUIConnectionStatus("Redirecting...", "status-reconnecting");
+                     
+                     // Grab the current IP so GitHub knows where to return to
+                     const currentLocalHost = window.location.host; 
+                     const separator = GITHUB_URL.includes('?') ? '&' : '?';
+                     window.location.href = GITHUB_URL + separator + "local=" + currentLocalHost;
+                } else {
+                     // Fallback
+                     isLocalMode = false;
+                     updateUIConnectionStatus("Global Mode", "status-cloud");
                 }
             }
         }
@@ -390,7 +418,6 @@
                 if (isLocalMode) {
                     fetch('/api/tasks').then(r => r.json()).then(renderTasks).catch(() => { isLocalMode = false; });
                 } else {
-                    // Activate real-time listener if in Global Mode and it's not active yet
                     if (!cloudListenerActive) {
                         database.ref('tasks').on('value', (snap) => renderTasks(snap.val()), (error) => {
                             console.error("Firebase Read Error:", error);
@@ -444,10 +471,9 @@
                 document.getElementById('loadingOverlay').style.display = 'flex';
                 if (isLocalMode) {
                     await fetch('/api/tasks/complete', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id: taskId}) });
-                    fetchTasks(); // Local mode needs manual fetch
+                    fetchTasks(); 
                 } else {
                     await database.ref('tasks/' + taskId).remove();
-                    // Note: Global mode listener automatically triggers renderTasks on remove
                 }
                 document.getElementById('loadingOverlay').style.display = 'none';
             }, 300);
@@ -473,11 +499,10 @@
                 const ep = editingTaskId ? '/api/tasks/update' : '/api/tasks/add';
                 if (editingTaskId) { payload.id = editingTaskId; payload.this_occurrence_only = document.getElementById('thisOccurrenceOnly').checked; }
                 await fetch(ep, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
-                fetchTasks(); // Local mode needs manual fetch
+                fetchTasks(); 
             } else {
                 const id = editingTaskId || Date.now().toString();
                 await database.ref('tasks/' + id).set(payload);
-                // Note: Global mode listener automatically triggers renderTasks on set
             }
 
             document.getElementById('loadingOverlay').style.display = 'none';
@@ -515,14 +540,11 @@
             document.getElementById('formTitle').innerText = 'Update Assignment';
         }
 
-        // Setup the loop to periodically check connection and trigger local fetch if needed
         setInterval(() => {
             if (isLocalMode) fetchTasks(); 
-            // We still want checkConnection to run to detect if the laptop goes offline
             else checkConnection(); 
         }, 5000); 
         
-        // Initial fetch
         fetchTasks();
     </script>
 </body>
