@@ -329,10 +329,10 @@
     <script>
         // --- 1. CONFIGURATION ---
         // TODO: Replace this with your actual GitHub Pages URL!
-        const GITHUB_URL = https://victoriakanbi.github.io/assignment-tracker/"; 
+        const GITHUB_URL = "https://yourusername.github.io/tracker-repo/"; 
         
         const firebaseConfig = {
-            databaseURL: "https://fluxgate-victor-default-rtdb.firebaseio.com"
+            databaseURL: "https://victoriakanbi.github.io/assignment-tracker/"
         };
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
@@ -346,14 +346,15 @@
 
         // --- 2. FAIL-SAFE CONNECTION ENGINE ---
         async function checkConnection() {
-            // If we are already on GitHub, don't even try to ping local (Mixed Content blocks it anyway)
+            // 1. If we are ALREADY on the GitHub URL, just stay in Global Mode.
             if (window.location.hostname.includes('github.io')) {
                 isLocalMode = false;
-                updateUIConnectionStatus("Global Cloud Mode", "status-cloud");
+                updateUIConnectionStatus("Global Mode", "status-cloud");
                 return;
             }
 
             try {
+                // 2. Try to ping the laptop.
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 1200);
                 const res = await fetch('/api/tasks', { signal: controller.signal });
@@ -365,14 +366,14 @@
                     updateUIConnectionStatus("Home WiFi Mode", "status-local");
                 } else { throw new Error(); }
             } catch (e) {
+                // 3. Ping failed. Laptop is unreachable.
                 isLocalMode = false;
                 localFailCount++;
                 updateUIConnectionStatus("Reconnecting...", "status-reconnecting");
                 
-                // AUTOMATIC FAIL-SAFE REDIRECT
-                // If local WiFi is down and we've failed 3 times, jump to GitHub
-                if (localFailCount >= 3 && GITHUB_URL.startsWith('http')) {
-                    window.location.href = GITHUB_URL;
+                // 4. Force the redirect if we are NOT on GitHub and it failed 3 times.
+                if (!window.location.hostname.includes('github.io') && GITHUB_URL.startsWith('http') && localFailCount >= 3) {
+                     window.location.href = GITHUB_URL;
                 }
             }
         }
