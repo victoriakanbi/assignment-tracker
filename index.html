@@ -6,582 +6,234 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Assignment Tracker</title>
     
-    <!-- Firebase SDKs (Required for GitHub/Global usage) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     
     <style>
         :root {
-            --bg: #F8FAFC; 
-            --surface: #FFFFFF;
-            --primary: #4F46E5; 
-            --primary-hover: #4338CA;
-            --text-main: #0F172A;
-            --text-sub: #64748B;
-            --border: #E2E8F0;
-            --success: #10B981;
-            --danger: #EF4444;
-            --warning: #F59E0B;
+            --bg: #F8FAFC; --surface: #FFFFFF; --primary: #4F46E5; 
+            --primary-hover: #4338CA; --text-main: #0F172A; --text-sub: #64748B;
+            --border: #E2E8F0; --success: #10B981; --danger: #EF4444; --warning: #F59E0B;
         }
 
-        body { 
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-            background: var(--bg); 
-            color: var(--text-main); 
-            margin: 0; 
-            padding: 0;
-            padding-bottom: calc(90px + env(safe-area-inset-bottom)); 
-            -webkit-tap-highlight-color: transparent;
-            -webkit-user-select: none; 
-            user-select: none;
-        }
-
-        input, select { -webkit-user-select: auto; user-select: auto; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text-main); margin: 0; padding: 0; padding-bottom: calc(90px + env(safe-area-inset-bottom)); -webkit-tap-highlight-color: transparent; user-select: none; }
+        input, select { user-select: auto; }
         ::-webkit-scrollbar { display: none; }
 
-        /* --- HEADER --- */
-        .header {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            padding: calc(20px + env(safe-area-inset-top)) 20px 15px 20px;
-            border-bottom: 1px solid var(--border);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .header-info h2 { margin: 0; color: var(--text-main); font-weight: 800; font-size: 24px; letter-spacing: -0.5px; }
+        .header { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); padding: calc(20px + env(safe-area-inset-top)) 20px 15px 20px; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; display: flex; justify-content: space-between; align-items: center; }
+        .header-info h2 { margin: 0; font-weight: 800; font-size: 24px; letter-spacing: -0.5px; cursor: pointer; }
         .header-info p { margin: 4px 0 0 0; color: var(--primary); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
         
-        .connection-pill {
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 10px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            transition: all 0.2s ease;
-        }
-        .connection-pill:active { transform: scale(0.95); }
-        .status-local { background: #DCFCE7; color: #166534; }
+        .connection-pill { padding: 5px 12px; border-radius: 20px; font-size: 10px; font-weight: 800; text-transform: uppercase; transition: 0.2s; }
         .status-cloud { background: #DBEAFE; color: #1E40AF; }
-        .status-reconnecting { background: #FEE2E2; color: #991B1B; animation: pulse 1.5s infinite; }
+        .status-error { background: #FEE2E2; color: #991B1B; }
 
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-
-        /* --- VIEWS --- */
         .view-container { display: none; padding: 20px; max-width: 600px; margin: 0 auto; animation: fadeUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
         .active-view { display: block; }
         @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* --- DASHBOARD STATS --- */
-        .dashboard-stats {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        .stat-card {
-            background: var(--surface);
-            padding: 15px;
-            border-radius: 16px;
-            border: 1px solid var(--border);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.03);
-        }
-        .stat-val { font-size: 28px; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0; }
-        .stat-label { font-size: 11px; font-weight: 700; color: var(--text-sub); margin: 0; text-transform: uppercase; letter-spacing: 0.5px;}
-        .stat-urgent { color: var(--danger); }
+        .dashboard-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: var(--surface); padding: 15px; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
+        .stat-val { font-size: 28px; font-weight: 800; margin: 0 0 4px 0; }
+        .stat-label { font-size: 11px; font-weight: 700; color: var(--text-sub); margin: 0; text-transform: uppercase; }
 
-        /* --- TASK CARDS & SWIPE UI --- */
-        .task-wrapper {
-            position: relative;
-            overflow: hidden;
-            border-radius: 16px;
-            margin-bottom: 12px;
-            background: var(--surface);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-            border: 1px solid var(--border);
-        }
-        
-        .swipe-action {
-            position: absolute; right: 0; top: 0; bottom: 0; width: 80px;
-            background: var(--primary); color: white; display: flex;
-            flex-direction: column; align-items: center; justify-content: center;
-            font-weight: 700; cursor: pointer; font-size: 13px; z-index: 1;
-        }
-
-        .task-card {
-            background: var(--surface);
-            border-radius: 16px;
-            padding: 16px;
-            border-left: 5px solid var(--border); 
-            display: flex;
-            align-items: center;
-            position: relative;
-            z-index: 2;
-            transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-            touch-action: pan-y;
-        }
-        
+        .task-wrapper { background: var(--surface); border-radius: 16px; padding: 16px; margin-bottom: 12px; border: 1px solid var(--border); border-left: 5px solid var(--border); display: flex; align-items: center; }
         .card-accent-critical { border-left-color: var(--danger); }
         .card-accent-high { border-left-color: var(--warning); }
         .card-accent-normal { border-left-color: var(--primary); }
         
-        .check-circle {
-            width: 26px; height: 26px;
-            border-radius: 50%;
-            border: 2px solid #CBD5E1;
-            margin-right: 15px;
-            flex-shrink: 0;
-            display: flex; align-items: center; justify-content: center;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            background: #F8FAFC;
-        }
-        .check-circle.completed {
-            background: var(--success);
-            border-color: var(--success);
-            transform: scale(1.1);
-        }
-        .check-circle.completed::after { content: '✓'; color: white; font-weight: bold; font-size: 14px;}
+        .check-circle { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #CBD5E1; margin-right: 15px; flex-shrink: 0; transition: 0.2s; background: #F8FAFC; }
+        .check-circle.completed { background: var(--success); border-color: var(--success); transform: scale(1.1); }
 
-        .task-icon {
-            background: #F1F5F9;
-            width: 38px; height: 38px;
-            border-radius: 12px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 18px; margin-right: 12px; flex-shrink: 0;
-        }
+        .task-icon { background: #F1F5F9; width: 38px; height: 38px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-right: 12px; flex-shrink: 0; }
+        .task-info { flex-grow: 1; min-width: 0; }
+        .task-title { font-weight: 700; font-size: 16px; margin: 0 0 4px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .task-sub { font-size: 13px; color: var(--text-sub); margin: 0; }
+        .task-date { font-size: 13px; font-weight: 700; text-align: right; margin-left: 10px;}
 
-        .task-info { flex-grow: 1; min-width: 0; pointer-events: none; }
-        .task-title { font-weight: 700; font-size: 16px; margin: 0 0 4px 0; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .task-sub { font-size: 13px; color: var(--text-sub); margin: 0; font-weight: 500;}
-        
-        .task-meta { text-align: right; flex-shrink: 0; margin-left: 10px; pointer-events: none;}
-        .task-date { font-size: 13px; font-weight: 700; color: var(--text-main); margin-bottom: 4px; }
-        .task-time { font-size: 12px; color: var(--text-sub); font-weight: 600;}
-
-        /* --- FORM --- */
-        .form-section-title { font-size: 20px; font-weight: 800; margin-top: 0; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--border);}
         .form-group { margin-bottom: 20px; }
-        label { font-size: 12px; font-weight: 700; color: var(--text-sub); display: block; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;}
+        label { font-size: 12px; font-weight: 700; color: var(--text-sub); display: block; margin-bottom: 8px; text-transform: uppercase; }
+        input, select { width: 100%; padding: 16px; border-radius: 14px; border: 1px solid var(--border); box-sizing: border-box; font-size: 16px; -webkit-appearance: none; }
         
-        input[type="text"], input[type="datetime-local"], select {
-            width: 100%; padding: 16px; border-radius: 14px; border: 1px solid var(--border);
-            background: var(--surface); color: var(--text-main); font-size: 16px; 
-            box-sizing: border-box; outline: none; font-weight: 500;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.01);
-            transition: 0.2s;
-            -webkit-appearance: none; 
-        }
-        input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15); }
-        
-        .checkbox-container { display: flex; align-items: center; background: #EEF2FF; padding: 18px; border-radius: 14px; margin-bottom: 15px; border: 1px solid #C7D2FE;}
-        .checkbox-container input { width: 24px; height: 24px; margin-right: 12px; accent-color: var(--primary); }
-        .checkbox-container label { margin: 0; color: var(--primary); font-size: 15px; font-weight: 700; text-transform: none; letter-spacing: 0;}
+        button.primary-btn { background: var(--primary); color: white; border: none; padding: 18px; border-radius: 14px; font-weight: 800; width: 100%; cursor: pointer; font-size: 16px; margin-top: 10px; }
+        button.primary-btn:active { transform: scale(0.97); }
 
-        .occurrence-edit-box {
-            display: none; padding-left: 10px; border-left: 3px solid var(--warning); 
-            margin-left: 10px; background: #FFFBEB; margin-bottom: 15px; border-radius: 14px; padding: 15px;
-        }
-
-        button.primary-btn { 
-            background: var(--primary); color: white; border: none; padding: 18px; 
-            border-radius: 14px; font-weight: 800; width: 100%; cursor: pointer; 
-            font-size: 16px; margin-top: 10px; box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
-            transition: 0.2s;
-            -webkit-appearance: none;
-        }
-        button.primary-btn:active { background: var(--primary-hover); transform: scale(0.97); }
-        .cancel-btn { background: transparent; color: var(--text-sub); border: none; width: 100%; padding: 15px; font-weight: 700; font-size: 14px; margin-top: 5px; cursor: pointer; display: none;}
-
-        /* --- BOTTOM NAVIGATION --- */
-        .bottom-nav {
-            position: fixed; bottom: 0; left: 0; width: 100%;
-            background: rgba(255, 255, 255, 0.9); 
-            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
-            border-top: 1px solid rgba(0,0,0,0.08);
-            display: flex; padding-bottom: env(safe-area-inset-bottom);
-            z-index: 100;
-        }
-        .nav-item {
-            flex: 1; text-align: center; padding: 12px 0 8px 0; color: var(--text-sub);
-            font-weight: 700; font-size: 11px; cursor: pointer; transition: all 0.2s;
-            display: flex; flex-direction: column; align-items: center; gap: 4px;
-        }
-        .nav-item span { font-size: 24px; margin-bottom: 2px; opacity: 0.4; transition: 0.2s;}
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border-top: 1px solid rgba(0,0,0,0.08); display: flex; padding-bottom: env(safe-area-inset-bottom); z-index: 100; }
+        .nav-item { flex: 1; text-align: center; padding: 15px 0; color: var(--text-sub); font-weight: 700; font-size: 12px; cursor: pointer; }
         .nav-item.active { color: var(--primary); }
-        .nav-item.active span { opacity: 1; transform: translateY(-2px); }
 
-        #loadingOverlay {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255,255,255,0.9); z-index: 999; 
-            justify-content: center; align-items: center; font-weight: 800; font-size: 18px; color: var(--primary);
-            flex-direction: column; gap: 15px;
-        }
-        .spinner { width: 40px; height: 40px; border: 4px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        #loadingOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 999; justify-content: center; align-items: center; font-weight: 800; color: var(--primary); }
     </style>
 </head>
 <body>
 
     <div class="header">
         <div class="header-info">
-            <h2>Assignments</h2>
+            <h2 onclick="handleTitleClick()">Assignments</h2>
             <p>Academic Matrix</p>
         </div>
-        <div id="connectionStatus" class="connection-pill status-cloud">Syncing...</div>
+        <div id="connectionStatus" class="connection-pill status-cloud">Connecting...</div>
     </div>
 
-    <!-- VIEW 1: MATRIX -->
     <div id="view-matrix" class="view-container active-view">
         <div class="dashboard-stats">
-            <div class="stat-card">
-                <p class="stat-val" id="stat-total">0</p>
-                <p class="stat-label">Pending Total</p>
-            </div>
-            <div class="stat-card">
-                <p class="stat-val stat-urgent" id="stat-urgent">0</p>
-                <p class="stat-label">Due Today / Overdue</p>
-            </div>
-        </div>
-        <div id="emptyState" style="text-align: center; padding: 60px 20px; color: var(--text-sub); display: none;">
-            <div style="font-size: 56px; margin-bottom: 15px; opacity: 0.9;">🎉</div>
-            <p style="font-weight: 800; font-size: 20px; color: var(--text-main); margin: 0 0 8px 0;">All clear, Engineer.</p>
-            <p style="font-size: 15px; margin: 0;">No assignments currently pending.</p>
+            <div class="stat-card"><p class="stat-val" id="stat-total">0</p><p class="stat-label">Pending Total</p></div>
+            <div class="stat-card"><p class="stat-val stat-urgent" id="stat-urgent" style="color:var(--danger);">0</p><p class="stat-label">Due Today / Overdue</p></div>
         </div>
         <div id="taskList"></div>
     </div>
 
-    <!-- VIEW 2: CREATE / EDIT -->
     <div id="view-create" class="view-container">
-        <h3 class="form-section-title" id="formTitle">New Assignment</h3>
-        <div class="form-group">
-            <label>Title</label>
-            <input type="text" id="taskTitle" placeholder="e.g. Signal Processing Analysis">
-        </div>
-        <div class="form-group">
-            <label>Subject</label>
-            <input type="text" id="taskSubject" placeholder="e.g. EE 301">
-        </div>
-        <div class="form-group">
-            <label>Classification</label>
+        <div class="form-group"><label>Title</label><input type="text" id="taskTitle"></div>
+        <div class="form-group"><label>Subject</label><input type="text" id="taskSubject"></div>
+        <div class="form-group"><label>Type</label>
             <select id="taskType">
                 <option value="Assignment">📄 Assignment</option>
                 <option value="Quiz">🧠 Quiz</option>
                 <option value="Exam">🎯 Exam</option>
-                <option value="Lab Report">🔬 Lab Report</option>
-                <option value="Study">📚 Study Session</option>
             </select>
         </div>
-        <div class="form-group">
-            <label>Target Date & Time</label>
-            <input type="datetime-local" id="taskDue">
-        </div>
-        <div class="form-group">
-            <label>Priority Level</label>
+        <div class="form-group"><label>Due Date</label><input type="datetime-local" id="taskDue"></div>
+        <div class="form-group"><label>Priority</label>
             <select id="taskPriority">
                 <option value="Normal">Normal</option>
-                <option value="High">High (Orange)</option>
-                <option value="Critical">Critical (Red)</option>
+                <option value="High">High</option>
+                <option value="Critical">Critical</option>
             </select>
         </div>
-        <div class="checkbox-container">
-            <input type="checkbox" id="taskRecurring" onchange="toggleRecurring()">
-            <label for="taskRecurring">Enable Auto-Recurrence</label>
-        </div>
-        <div id="recurringOptions" style="display: none; padding-left: 10px; border-left: 3px solid var(--primary); margin-left: 10px;">
-            <div class="form-group">
-                <label>Recurrence Interval</label>
-                <select id="taskInterval">
-                    <option value="Weekly">Weekly</option>
-                    <option value="Daily">Daily</option>
-                    <option value="Bi-Weekly">Bi-Weekly</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Cycle Expiration (Optional)</label>
-                <input type="datetime-local" id="taskUntil">
-            </div>
-        </div>
-        <div class="occurrence-edit-box" id="editOccurrenceContainer">
-            <div style="display:flex; align-items:center;">
-                <input type="checkbox" id="thisOccurrenceOnly" style="width: 22px; height: 22px; margin-right: 12px; accent-color: var(--warning);">
-                <label for="thisOccurrenceOnly" style="color: var(--warning); margin: 0; font-size: 14px; text-transform:none;">Edit this occurrence only</label>
-            </div>
-        </div>
-        <button class="primary-btn" id="submitBtn" onclick="submitToMatrix()">Deploy to Matrix</button>
-        <button class="cancel-btn" id="cancelEditBtn" onclick="resetForm()">Cancel Edit</button>
+        <button class="primary-btn" onclick="submitToMatrix()">Deploy to Matrix</button>
     </div>
 
-    <!-- NAVIGATION -->
     <div class="bottom-nav">
-        <div class="nav-item active" id="nav-matrix" onclick="switchTab('matrix')"><span>📡</span>Matrix</div>
-        <div class="nav-item" id="nav-create" onclick="switchTab('create')">
-            <span id="navIconCreate">➕</span>
-            <span id="navTextCreate" style="font-size: 11px; opacity:1;">Deploy</span>
-        </div>
+        <div class="nav-item active" id="nav-matrix" onclick="switchTab('matrix')">📡 Matrix</div>
+        <div class="nav-item" id="nav-create" onclick="switchTab('create')">➕ Deploy</div>
     </div>
 
-    <div id="loadingOverlay"><div class="spinner"></div>Syncing...</div>
+    <div id="loadingOverlay">Syncing Data...</div>
 
     <script>
-        // --- 1. CONFIGURATION ---
-        const GITHUB_URL = "https://victoriakanbi.github.io/assignment-tracker/"; 
-        
-        // SECURITY: Retrieve the API Key from localStorage. If it doesn't exist, prompt the user.
-        let API_KEY = localStorage.getItem('matrix_api_key');
-        if (!API_KEY) {
-            API_KEY = prompt("Enter the Matrix API Key to continue:");
-            if (API_KEY) {
-                localStorage.setItem('matrix_api_key', API_KEY);
-            } else {
-                alert("API Key is required for this application to function.");
-            }
-        }
-        
-        const firebaseConfig = {
-            databaseURL: "https://fluxgate-victor-default-rtdb.firebaseio.com"
-        };
+        // --- FIREBASE GATEKEEPER LOGIC ---
+        const firebaseConfig = { databaseURL: "https://fluxgate-victor-default-rtdb.firebaseio.com" };
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         
-        let isLocalMode = false;
-        let localFailCount = 0;
-        let cachedTasks = {}; 
-        let editingTaskId = null;
-        let touchStartX = 0;
-        let currentSwipedCard = null;
-        let cloudListenerActive = false;
-
-        // --- 2. FAIL-SAFE CONNECTION ENGINE ---
-        async function checkConnection() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const localTarget = urlParams.get('local');
-
-            if (window.location.hostname.includes('github.io')) {
-                isLocalMode = false;
-                const pill = document.getElementById('connectionStatus');
-                
-                if (localTarget) {
-                    pill.innerText = "🌐 Global (Tap for WiFi)";
-                    pill.className = "connection-pill status-cloud";
-                    pill.style.cursor = "pointer";
-                    if (!pill.onclick) {
-                        pill.onclick = () => {
-                            pill.innerText = "Switching...";
-                            window.location.href = "http://" + localTarget + "/add-task";
-                        };
-                    }
-                } else {
-                    updateUIConnectionStatus("Global Mode", "status-cloud");
-                }
-                return;
+        let API_KEY = localStorage.getItem('matrix_api_key');
+        let DATABASE_ID = null; // Will be retrieved securely from Firebase
+        
+        let titleClickCount = 0, titleClickTimer = null;
+        function handleTitleClick() {
+            titleClickCount++; clearTimeout(titleClickTimer);
+            if (titleClickCount >= 3) {
+                if(confirm("Reset Security Password?")) { localStorage.removeItem('matrix_api_key'); window.location.reload(); }
+                titleClickCount = 0;
             }
-
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 800); 
-                // Attached API_KEY to the headers for the security bouncer
-                const res = await fetch('/api/tasks', { 
-                    headers: { 'X-Api-Key': API_KEY },
-                    signal: controller.signal 
-                });
-                clearTimeout(timeoutId);
-                
-                if (res.ok) {
-                    isLocalMode = true;
-                    localFailCount = 0;
-                    updateUIConnectionStatus("Home WiFi Mode", "status-local");
-                    document.getElementById('connectionStatus').onclick = null;
-                    document.getElementById('connectionStatus').style.cursor = "default";
-                } else { 
-                    // If the server returns a 401 Unauthorized, it means the API Key is wrong.
-                    if(res.status === 401) {
-                        alert("Invalid API Key detected. Please refresh to re-enter.");
-                        localStorage.removeItem('matrix_api_key');
-                    }
-                    throw new Error("Server returned non-200"); 
-                }
-            } catch (e) {
-                if (!window.location.hostname.includes('github.io') && GITHUB_URL.startsWith('http')) {
-                     updateUIConnectionStatus("Redirecting...", "status-reconnecting");
-                     const currentLocalHost = window.location.host; 
-                     const separator = GITHUB_URL.includes('?') ? '&' : '?';
-                     window.location.href = GITHUB_URL + separator + "local=" + currentLocalHost;
-                } else {
-                     isLocalMode = false;
-                     updateUIConnectionStatus("Global Mode", "status-cloud");
-                }
-            }
+            titleClickTimer = setTimeout(() => { titleClickCount = 0; }, 500);
         }
 
-        function updateUIConnectionStatus(text, className) {
-            const pill = document.getElementById('connectionStatus');
-            pill.innerText = text;
-            pill.className = `connection-pill ${className}`;
+        function getPassword() {
+            if (!API_KEY) {
+                API_KEY = prompt("Matrix Cloud Locked\nEnter Security Password:");
+                if (API_KEY) { localStorage.setItem('matrix_api_key', API_KEY); return true; }
+                document.getElementById('connectionStatus').innerText = "Locked";
+                document.getElementById('connectionStatus').className = "connection-pill status-error";
+                return false;
+            }
+            return true;
         }
 
-        // --- 3. DATA SYNC ---
-        function fetchTasks() {
-            checkConnection().then(() => {
-                if (isLocalMode) {
-                    // Send API_KEY with the request
-                    fetch('/api/tasks', { headers: { 'X-Api-Key': API_KEY } })
-                        .then(r => r.json())
-                        .then(renderTasks)
-                        .catch(() => { isLocalMode = false; });
+        function initializeMatrix() {
+            if (!getPassword()) return;
+
+            // Step 1: Present Password to Gatekeeper
+            database.ref('Gatekeeper/' + API_KEY).once('value').then(snap => {
+                const vaultPointer = snap.val();
+                
+                if (vaultPointer) {
+                    // Password accepted! Load the actual tasks.
+                    DATABASE_ID = vaultPointer;
+                    document.getElementById('connectionStatus').innerText = "Cloud Sync Active";
+                    document.getElementById('connectionStatus').className = "connection-pill status-cloud";
+                    startTaskListener();
                 } else {
-                    if (!cloudListenerActive) {
-                        database.ref('tasks').on('value', (snap) => renderTasks(snap.val()), (error) => {
-                            console.error("Firebase Read Error:", error);
-                        });
-                        cloudListenerActive = true;
-                    }
+                    // Wrong password
+                    alert("Password Incorrect or Changed. Access Denied.");
+                    localStorage.removeItem('matrix_api_key');
+                    window.location.reload();
                 }
+            }).catch(err => {
+                alert("Gatekeeper Error: Permission Denied.");
+                localStorage.removeItem('matrix_api_key');
+                window.location.reload();
+            });
+        }
+
+        function startTaskListener() {
+            database.ref(DATABASE_ID + '/tasks').on('value', (snap) => {
+                renderTasks(snap.val());
             });
         }
 
         function renderTasks(data) {
             const list = document.getElementById('taskList');
-            const emptyState = document.getElementById('emptyState');
-            if (!data || Object.keys(data).length === 0) {
-                emptyState.style.display = 'block'; list.innerHTML = ''; 
-                document.getElementById('stat-total').innerText = "0";
-                document.getElementById('stat-urgent').innerText = "0";
-                return;
-            }
-            emptyState.style.display = 'none'; cachedTasks = data;
-            let arr = Object.keys(data).map(k => ({id: k, ...data[k]})).sort((a,b) => new Date(a.due) - new Date(b.due));
+            if (!data) { list.innerHTML = '<p style="text-align:center; color:#888; margin-top:40px;">No assignments pending.</p>'; document.getElementById('stat-total').innerText="0"; document.getElementById('stat-urgent').innerText="0"; return; }
             
-            let overdue = [], today = [], upcoming = [];
+            let arr = Object.keys(data).map(k => ({id: k, ...data[k]})).sort((a,b) => new Date(a.due) - new Date(b.due));
+            let overdue = 0, html = "";
             let now = new Date(), tom = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+            
             arr.forEach(t => {
                 let d = new Date(t.due);
-                if (d < now) overdue.push(t);
-                else if (d < tom) today.push(t);
-                else upcoming.push(t);
+                if (d < tom) overdue++;
+                let acc = t.priority === 'Critical' ? 'critical' : (t.priority === 'High' ? 'high' : 'normal');
+                let icon = {Assignment:"📄",Quiz:"🧠",Exam:"🎯",LabReport:"🔬",Study:"📚"}[t.type.replace(/\s/g,'')] || "📄";
+                const dateStr = d.toLocaleDateString('en-US',{weekday:'short', month:'short',day:'numeric'});
+                
+                html += `<div class="task-wrapper card-accent-${acc}">
+                <div class="check-circle" onclick="completeTask('${t.id}', this)"></div><div class="task-icon">${icon}</div>
+                <div class="task-info"><p class="task-title">${t.title}</p><p class="task-sub">${t.type} • ${t.subject}</p></div>
+                <div class="task-meta"><div class="task-date">${dateStr}</div></div></div>`;
             });
-
-            let html = "";
-            const buildSection = (title, color, items) => {
-                if (!items.length) return "";
-                let s = `<h3 style="font-size:13px; font-weight:800; color:var(--${color}); margin:25px 0 12px 5px; text-transform:uppercase; letter-spacing:0.5px;">${title} <span style="background:var(--${color}); color:white; padding:2px 8px; border-radius:12px; font-size:10px; margin-left:6px;">${items.length}</span></h3>`;
-                items.forEach(t => s += buildCardHtml(t));
-                return s;
-            };
-
-            html += buildSection("⚠️ Overdue", "danger", overdue);
-            html += buildSection("🔥 Due Today", "warning", today);
-            html += buildSection("📅 Upcoming", "primary", upcoming);
-            if (list.innerHTML !== html) list.innerHTML = html;
+            
+            list.innerHTML = html;
             document.getElementById('stat-total').innerText = arr.length;
-            document.getElementById('stat-urgent').innerText = overdue.length + today.length;
+            document.getElementById('stat-urgent').innerText = overdue;
+        }
+
+        async function submitToMatrix() {
+            if (!DATABASE_ID) return alert("Vault locked. Cannot save.");
+            const payload = {
+                title: document.getElementById('taskTitle').value.trim(),
+                subject: document.getElementById('taskSubject').value.trim(),
+                type: document.getElementById('taskType').value,
+                due: document.getElementById('taskDue').value + ":00",
+                priority: document.getElementById('taskPriority').value
+            };
+            if (!payload.title || !document.getElementById('taskDue').value) return alert("Title and Date required");
+
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            await database.ref(DATABASE_ID + '/tasks/' + Date.now()).set(payload);
+            document.getElementById('loadingOverlay').style.display = 'none';
+            switchTab('matrix');
         }
 
         async function completeTask(taskId, el) {
+            if (!DATABASE_ID) return;
             el.classList.add('completed');
             setTimeout(async () => {
                 document.getElementById('loadingOverlay').style.display = 'flex';
-                if (isLocalMode) {
-                    // Send API_KEY
-                    await fetch('/api/tasks/complete', { 
-                        method: 'POST', 
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-Api-Key': API_KEY
-                        }, 
-                        body: JSON.stringify({id: taskId}) 
-                    });
-                    fetchTasks(); 
-                } else {
-                    await database.ref('tasks/' + taskId).remove();
-                }
+                await database.ref(DATABASE_ID + '/tasks/' + taskId).remove();
                 document.getElementById('loadingOverlay').style.display = 'none';
             }, 300);
         }
 
-        async function submitToMatrix() {
-            const payload = {
-                title: document.getElementById('taskTitle').value.trim(),
-                subject: document.getElementById('taskSubject').value.trim(),
-                type: document.getElementById('taskType').value.replace(/[^a-zA-Z\s]/g, '').trim(),
-                due: document.getElementById('taskDue').value + ":00",
-                priority: document.getElementById('taskPriority').value,
-                recurring: document.getElementById('taskRecurring').checked,
-                interval: document.getElementById('taskInterval').value,
-                recur_until: document.getElementById('taskUntil').value ? document.getElementById('taskUntil').value + ":00" : null,
-                last_alert: 0
-            };
-
-            if (!payload.title || !payload.due) return alert("Title and Date required");
-            document.getElementById('loadingOverlay').style.display = 'flex';
-
-            if (isLocalMode) {
-                const ep = editingTaskId ? '/api/tasks/update' : '/api/tasks/add';
-                if (editingTaskId) { payload.id = editingTaskId; payload.this_occurrence_only = document.getElementById('thisOccurrenceOnly').checked; }
-                
-                // Send API_KEY
-                await fetch(ep, { 
-                    method: 'POST', 
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Api-Key': API_KEY
-                    }, 
-                    body: JSON.stringify(payload) 
-                });
-                fetchTasks(); 
-            } else {
-                const id = editingTaskId || Date.now().toString();
-                await database.ref('tasks/' + id).set(payload);
-            }
-
-            document.getElementById('loadingOverlay').style.display = 'none';
-            resetForm(); 
-        }
-
-        // --- 4. GESTURE & UI HELPERS ---
         function switchTab(t) { 
             document.getElementById('view-matrix').classList.toggle('active-view', t==='matrix'); 
             document.getElementById('view-create').classList.toggle('active-view', t==='create');
             document.getElementById('nav-matrix').classList.toggle('active', t==='matrix'); 
             document.getElementById('nav-create').classList.toggle('active', t==='create');
         }
-        function toggleRecurring() { document.getElementById('recurringOptions').style.display = document.getElementById('taskRecurring').checked ? 'block' : 'none'; }
-        function resetForm() {
-            document.querySelectorAll('input').forEach(i => i.type === 'checkbox' ? i.checked = false : i.value = '');
-            editingTaskId = null; document.getElementById('formTitle').innerText = 'New Assignment'; switchTab('matrix');
-        }
-        function buildCardHtml(t) {
-            let acc = t.priority === 'Critical' ? 'critical' : (t.priority === 'High' ? 'high' : 'normal');
-            let icon = {Assignment:"📄",Quiz:"🧠",Exam:"🎯",LabReport:"🔬",Study:"📚"}[t.type.replace(/\s/g,'')] || "📄";
-            
-            const dateStr = new Date(t.due).toLocaleDateString('en-US',{weekday:'short', month:'short',day:'numeric'});
-            
-            return `<div class="task-wrapper"><div class="swipe-action" onclick="editTask('${t.id}')"><span>✏️</span>Edit</div>
-            <div class="task-card card-accent-${acc}" id="card-${t.id}" ontouchstart="hTS(event, '${t.id}')" ontouchmove="hTM(event, '${t.id}')" ontouchend="hTE(event, '${t.id}')">
-            <div class="check-circle" onclick="completeTask('${t.id}', this)"></div><div class="task-icon">${icon}</div>
-            <div class="task-info"><p class="task-title">${t.title}</p><p class="task-sub">${t.type} • ${t.subject}</p></div>
-            <div class="task-meta"><div class="task-date">${dateStr}</div><div class="task-time">${new Date(t.due).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}</div></div></div></div>`;
-        }
-        function hTS(e, id) { touchStartX = e.touches[0].clientX; if (currentSwipedCard && currentSwipedCard !== id) document.getElementById('card-'+currentSwipedCard).style.transform = 'translateX(0)'; }
-        function hTM(e, id) { let d = touchStartX - e.touches[0].clientX; if (d > 0 && d < 100) document.getElementById('card-'+id).style.transform = `translateX(-${d}px)`; }
-        function hTE(e, id) { let d = touchStartX - e.changedTouches[0].clientX; let el = document.getElementById('card-'+id); if (d > 40) { el.style.transform = 'translateX(-80px)'; currentSwipedCard = id; } else { el.style.transform = 'translateX(0)'; currentSwipedCard = null; } }
-        function editTask(id) { 
-            let t = cachedTasks[id]; editingTaskId = id; document.getElementById('taskTitle').value = t.title; document.getElementById('taskSubject').value = t.subject; 
-            document.getElementById('taskDue').value = t.due.substring(0,16); document.getElementById('taskPriority').value = t.priority; 
-            document.getElementById('taskRecurring').checked = t.recurring; toggleRecurring(); switchTab('create');
-            document.getElementById('formTitle').innerText = 'Update Assignment';
-        }
 
-        setInterval(() => {
-            if (isLocalMode) fetchTasks(); 
-            else checkConnection(); 
-        }, 5000); 
-        
-        fetchTasks();
+        initializeMatrix();
     </script>
 </body>
 </html>
