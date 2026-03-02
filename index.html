@@ -330,7 +330,17 @@
     <script>
         // --- 1. CONFIGURATION ---
         const GITHUB_URL = "https://victoriakanbi.github.io/assignment-tracker/"; 
-        const API_KEY = "Matrix2026"; // THE SECRET PASSWORD
+        
+        // SECURITY: Retrieve the API Key from localStorage. If it doesn't exist, prompt the user.
+        let API_KEY = localStorage.getItem('matrix_api_key');
+        if (!API_KEY) {
+            API_KEY = prompt("Enter the Matrix API Key to continue:");
+            if (API_KEY) {
+                localStorage.setItem('matrix_api_key', API_KEY);
+            } else {
+                alert("API Key is required for this application to function.");
+            }
+        }
         
         const firebaseConfig = {
             databaseURL: "https://fluxgate-victor-default-rtdb.firebaseio.com"
@@ -388,6 +398,11 @@
                     document.getElementById('connectionStatus').onclick = null;
                     document.getElementById('connectionStatus').style.cursor = "default";
                 } else { 
+                    // If the server returns a 401 Unauthorized, it means the API Key is wrong.
+                    if(res.status === 401) {
+                        alert("Invalid API Key detected. Please refresh to re-enter.");
+                        localStorage.removeItem('matrix_api_key');
+                    }
                     throw new Error("Server returned non-200"); 
                 }
             } catch (e) {
