@@ -524,11 +524,15 @@
         function buildCardHtml(t) {
             let acc = t.priority === 'Critical' ? 'critical' : (t.priority === 'High' ? 'high' : 'normal');
             let icon = {Assignment:"📄",Quiz:"🧠",Exam:"🎯",LabReport:"🔬",Study:"📚"}[t.type.replace(/\s/g,'')] || "📄";
+            
+            // INJECTED DAY OF WEEK HERE
+            const dateStr = new Date(t.due).toLocaleDateString('en-US',{weekday:'short', month:'short',day:'numeric'});
+            
             return `<div class="task-wrapper"><div class="swipe-action" onclick="editTask('${t.id}')"><span>✏️</span>Edit</div>
             <div class="task-card card-accent-${acc}" id="card-${t.id}" ontouchstart="hTS(event, '${t.id}')" ontouchmove="hTM(event, '${t.id}')" ontouchend="hTE(event, '${t.id}')">
             <div class="check-circle" onclick="completeTask('${t.id}', this)"></div><div class="task-icon">${icon}</div>
             <div class="task-info"><p class="task-title">${t.title}</p><p class="task-sub">${t.type} • ${t.subject}</p></div>
-            <div class="task-meta"><div class="task-date">${new Date(t.due).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div><div class="task-time">${new Date(t.due).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}</div></div></div></div>`;
+            <div class="task-meta"><div class="task-date">${dateStr}</div><div class="task-time">${new Date(t.due).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}</div></div></div></div>`;
         }
         function hTS(e, id) { touchStartX = e.touches[0].clientX; if (currentSwipedCard && currentSwipedCard !== id) document.getElementById('card-'+currentSwipedCard).style.transform = 'translateX(0)'; }
         function hTM(e, id) { let d = touchStartX - e.touches[0].clientX; if (d > 0 && d < 100) document.getElementById('card-'+id).style.transform = `translateX(-${d}px)`; }
