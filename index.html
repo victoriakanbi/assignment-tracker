@@ -37,6 +37,14 @@
         .stat-val { font-size: 28px; font-weight: 800; margin: 0 0 4px 0; }
         .stat-label { font-size: 11px; font-weight: 700; color: var(--text-sub); margin: 0; text-transform: uppercase; }
 
+        /* Subject Filtering UI */
+        .subject-filters { display: flex; overflow-x: auto; gap: 10px; margin-bottom: 15px; padding-bottom: 5px; -webkit-overflow-scrolling: touch; }
+        .subject-filters::-webkit-scrollbar { display: none; }
+        .subject-pill { padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 700; background: var(--surface); border: 1px solid var(--border); color: var(--text-sub); white-space: nowrap; cursor: pointer; transition: 0.2s; }
+        .subject-pill.active { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2); }
+        
+        .section-header { font-size: 12px; font-weight: 800; color: var(--text-sub); text-transform: uppercase; letter-spacing: 1px; margin: 25px 0 10px 5px; border-bottom: 1px solid var(--border); padding-bottom: 5px; }
+
         .task-wrapper { background: var(--surface); border-radius: 16px; padding: 16px; margin-bottom: 12px; border: 1px solid var(--border); border-left: 5px solid var(--border); display: flex; align-items: center; }
         .card-accent-critical { border-left-color: var(--danger); }
         .card-accent-high { border-left-color: var(--warning); }
@@ -46,10 +54,10 @@
         .check-circle.completed { background: var(--success); border-color: var(--success); transform: scale(1.1); }
 
         .task-icon { background: #F1F5F9; width: 38px; height: 38px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-right: 12px; flex-shrink: 0; }
-        .task-info { flex-grow: 1; min-width: 0; cursor: pointer; } /* Added pointer for editing */
+        .task-info { flex-grow: 1; min-width: 0; cursor: pointer; } 
         .task-title { font-weight: 700; font-size: 16px; margin: 0 0 4px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .task-sub { font-size: 13px; color: var(--text-sub); margin: 0; }
-        .task-date { font-size: 13px; font-weight: 700; text-align: right; margin-left: 10px;}
+        .task-date { font-size: 11px; font-weight: 700; text-align: right; margin-left: 8px; line-height: 1.3; white-space: nowrap;}
 
         .form-group { margin-bottom: 20px; }
         label { font-size: 12px; font-weight: 700; color: var(--text-sub); display: block; margin-bottom: 8px; text-transform: uppercase; }
@@ -84,6 +92,10 @@
             <div class="stat-card"><p class="stat-val" id="stat-total">0</p><p class="stat-label">Pending Total</p></div>
             <div class="stat-card"><p class="stat-val stat-urgent" id="stat-urgent" style="color:var(--danger);">0</p><p class="stat-label">Due Today / Overdue</p></div>
         </div>
+        
+        <!-- Interactive Subject Filters -->
+        <div id="subjectFilters" class="subject-filters"></div>
+        
         <div id="taskList"></div>
     </div>
 
@@ -108,7 +120,6 @@
             </select>
         </div>
 
-        <!-- NEW RECURRING UI SECTIONS -->
         <div class="checkbox-container">
             <input type="checkbox" id="taskRecurring" onchange="toggleRecur()">
             <label for="taskRecurring" style="margin:0; text-transform:none; font-size:14px; font-weight:600;">Enable Recurring Cycle</label>
@@ -160,9 +171,11 @@
         let API_KEY = localStorage.getItem('matrix_api_key');
         let DATABASE_ID = null; 
         
-        // Form State
+        // Form & State logic
         let editingTaskId = null;
         let editingTaskOriginal = null;
+        let globalTaskData = null;
+        let activeSubjectFilter = 'All';
 
         let titleClickCount = 0, titleClickTimer = null;
         function handleTitleClick() {
@@ -213,34 +226,104 @@
             });
         }
 
+        function filterBySubject(sub) {
+            activeSubjectFilter = sub;
+            buildTaskList();
+        }
+
         function renderTasks(data) {
+            globalTaskData = data;
+            buildTaskList();
+        }
+
+        function buildTaskList() {
             const list = document.getElementById('taskList');
-            if (!data) { list.innerHTML = '<p style="text-align:center; color:#888; margin-top:40px;">No assignments pending.</p>'; document.getElementById('stat-total').innerText="0"; document.getElementById('stat-urgent').innerText="0"; return; }
+            const filterContainer = document.getElementById('subjectFilters');
+            const data = globalTaskData;
+
+            if (!data) { 
+                list.innerHTML = '<p style="text-align:center; color:#888; margin-top:40px;">No assignments pending.</p>'; 
+                document.getElementById('stat-total').innerText = "0"; 
+                document.getElementById('stat-urgent').innerText = "0"; 
+                filterContainer.innerHTML = '';
+                return; 
+            }
             
-            let arr = Object.keys(data).map(k => ({id: k, ...data[k]})).sort((a,b) => new Date(a.due) - new Date(b.due));
-            let overdue = 0, html = "";
-            let now = new Date(), tom = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+            let allTasks = Object.keys(data).map(k => ({id: k, ...data[k]})).sort((a,b) => new Date(a.due) - new Date(b.due));
             
-            arr.forEach(t => {
+            // Generate Subject Pills
+            let subjects = ['All', ...new Set(allTasks.map(t => t.subject).filter(Boolean))];
+            
+            // If the currently selected subject filter was deleted, reset to 'All'
+            if (!subjects.includes(activeSubjectFilter)) activeSubjectFilter = 'All';
+
+            filterContainer.innerHTML = subjects.map(s => 
+                `<div class="subject-pill ${s === activeSubjectFilter ? 'active' : ''}" onclick="filterBySubject('${s.replace(/'/g, "\\'")}')">${s}</div>`
+            ).join('');
+
+            // Calculate Global Stats (Always reflects ALL tasks so numbers don't jump around when filtering)
+            let overdueOrTodayCount = 0;
+            let now = new Date();
+            let todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+            let threeDaysEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3, 23, 59, 59);
+
+            allTasks.forEach(t => {
                 let d = new Date(t.due);
-                if (d < tom) overdue++;
-                let acc = t.priority === 'Critical' ? 'critical' : (t.priority === 'High' ? 'high' : 'normal');
-                let icon = {Assignment:"📄",Quiz:"🧠",Exam:"🎯",LabReport:"🔬",Study:"📚"}[t.type.replace(/\s/g,'')] || "📄";
-                const dateStr = d.toLocaleDateString('en-US',{weekday:'short', month:'short',day:'numeric'});
-                
-                // Clicking the text/info opens the editor, clicking the circle completes it
-                html += `<div class="task-wrapper card-accent-${acc}">
-                <div class="check-circle" onclick="completeTask('${t.id}', this)"></div><div class="task-icon">${icon}</div>
-                <div class="task-info" onclick='openEditMode(${JSON.stringify(t).replace(/'/g, "\\'")})'>
-                    <p class="task-title">${t.title}</p>
-                    <p class="task-sub">${t.type} • ${t.subject} ${t.recurring ? '🔄' : ''}</p>
-                </div>
-                <div class="task-meta"><div class="task-date">${dateStr}</div></div></div>`;
+                if (d <= todayEnd) overdueOrTodayCount++;
             });
-            
+            document.getElementById('stat-total').innerText = allTasks.length;
+            document.getElementById('stat-urgent').innerText = overdueOrTodayCount;
+
+            // Apply the chosen filter
+            let filteredTasks = activeSubjectFilter === 'All' ? allTasks : allTasks.filter(t => t.subject === activeSubjectFilter);
+
+            if (filteredTasks.length === 0) {
+                list.innerHTML = '<p style="text-align:center; color:#888; margin-top:40px;">No assignments pending for this subject.</p>';
+                return;
+            }
+
+            // Categorize into Timeframes
+            let groups = {
+                'Overdue': [],
+                'Due Today': [],
+                'Due in 3 Days': [],
+                'Upcoming': []
+            };
+
+            filteredTasks.forEach(t => {
+                let d = new Date(t.due);
+                if (d < now) groups['Overdue'].push(t);
+                else if (d <= todayEnd) groups['Due Today'].push(t);
+                else if (d <= threeDaysEnd) groups['Due in 3 Days'].push(t);
+                else groups['Upcoming'].push(t);
+            });
+
+            // Build categorized HTML
+            let html = "";
+            for (let [groupName, tasks] of Object.entries(groups)) {
+                if (tasks.length > 0) {
+                    let accent = groupName === 'Overdue' ? 'color: var(--danger); border-bottom-color: var(--danger);' : '';
+                    html += `<div class="section-header" style="${accent}">${groupName}</div>`;
+                    
+                    tasks.forEach(t => {
+                        let acc = t.priority === 'Critical' ? 'critical' : (t.priority === 'High' ? 'high' : 'normal');
+                        let icon = {Assignment:"📄",Quiz:"🧠",Exam:"🎯","Lab Report":"🔬",Study:"📚"}[t.type] || "📄";
+                        let d = new Date(t.due);
+                        
+                        const dateStr = d.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'});
+                        const timeStr = d.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'});
+                        
+                        html += `<div class="task-wrapper card-accent-${acc}">
+                        <div class="check-circle" onclick="completeTask('${t.id}', this)"></div><div class="task-icon">${icon}</div>
+                        <div class="task-info" onclick='openEditMode(${JSON.stringify(t).replace(/'/g, "&#39;")})'>
+                            <p class="task-title">${t.title}</p>
+                            <p class="task-sub">${t.type} • ${t.subject} ${t.recurring ? '🔄' : ''}</p>
+                        </div>
+                        <div class="task-meta"><div class="task-date">${dateStr}<br><span style="font-weight:500; font-size:10px; color:var(--text-sub);">${timeStr}</span></div></div></div>`;
+                    });
+                }
+            }
             list.innerHTML = html;
-            document.getElementById('stat-total').innerText = arr.length;
-            document.getElementById('stat-urgent').innerText = overdue;
         }
 
         // --- NEW EDIT AND RECURRING LOGIC ---
@@ -306,7 +389,7 @@
                 shouldRecur = false;
             }
             if (shouldRecur) {
-                let newTask = {...task, due: nextDue, processed_by_pc: true}; // True because it's automated schedule spawn
+                let newTask = {...task, due: nextDue, processed_by_pc: true}; 
                 delete newTask.id;
                 await database.ref(DATABASE_ID + '/tasks/' + (Date.now() + Math.floor(Math.random() * 1000))).set(newTask);
             }
