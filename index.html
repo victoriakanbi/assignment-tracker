@@ -6,6 +6,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Assignment Tracker</title>
     
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     
@@ -32,13 +33,14 @@
         .active-view { display: block; }
         @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        .dashboard-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
-        .stat-card { background: var(--surface); padding: 15px; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
-        .stat-val { font-size: 28px; font-weight: 800; margin: 0 0 4px 0; }
-        .stat-label { font-size: 11px; font-weight: 700; color: var(--text-sub); margin: 0; text-transform: uppercase; }
+        /* THE FIX: Adjusted to 3 equal columns to gracefully fit the Streak Stat */
+        .dashboard-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        .stat-card { background: var(--surface); padding: 12px 10px; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.03); text-align: center; }
+        .stat-val { font-size: 24px; font-weight: 800; margin: 0 0 4px 0; }
+        .stat-label { font-size: 10px; font-weight: 700; color: var(--text-sub); margin: 0; text-transform: uppercase; }
 
         /* Subject Filtering UI */
-        .subject-filters { display: flex; overflow-x: auto; gap: 10px; margin-bottom: 15px; padding-bottom: 5px; -webkit-overflow-scrolling: touch; }
+        .subject-filters { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 5px; -webkit-overflow-scrolling: touch; }
         .subject-filters::-webkit-scrollbar { display: none; }
         .subject-pill { padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 700; background: var(--surface); border: 1px solid var(--border); color: var(--text-sub); white-space: nowrap; cursor: pointer; transition: 0.2s; }
         .subject-pill.active { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2); }
@@ -89,12 +91,22 @@
 
     <div id="view-matrix" class="view-container active-view">
         <div class="dashboard-stats">
-            <div class="stat-card"><p class="stat-val" id="stat-total">0</p><p class="stat-label">Pending Total</p></div>
-            <div class="stat-card"><p class="stat-val stat-urgent" id="stat-urgent" style="color:var(--danger);">0</p><p class="stat-label">Due Today / Overdue</p></div>
+            <div class="stat-card"><p class="stat-val" id="stat-total">0</p><p class="stat-label">Pending</p></div>
+            <div class="stat-card"><p class="stat-val stat-urgent" id="stat-urgent" style="color:var(--danger);">0</p><p class="stat-label">Due Today</p></div>
+            <div class="stat-card"><p class="stat-val" id="stat-streak" style="color:var(--warning);">0</p><p class="stat-label">Streak 🔥</p></div>
         </div>
         
-        <!-- Interactive Subject Filters -->
-        <div id="subjectFilters" class="subject-filters"></div>
+        <!-- Interactive Subject Filters & Dynamic Lookahead -->
+        <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center;">
+            <div id="subjectFilters" class="subject-filters" style="margin-bottom: 0; flex: 1;"></div>
+            <select id="lookaheadDays" onchange="changeLookahead()" style="flex-shrink: 0; padding: 8px 12px; border-radius: 20px; font-size: 11px; font-weight: 800; background: var(--surface); color: var(--text-main); border: 1px solid var(--border); outline: none;">
+                <option value="1">1 Day</option>
+                <option value="2">2 Days</option>
+                <option value="3">3 Days</option>
+                <option value="4">4 Days</option>
+                <option value="5">5 Days</option>
+            </select>
+        </div>
         
         <div id="taskList"></div>
     </div>
@@ -118,6 +130,15 @@
                 <option value="High">High</option>
                 <option value="Critical">Critical</option>
             </select>
+        </div>
+
+        <div class="form-group">
+            <label>Checklist / Sub-tasks (Optional)</label>
+            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                <input type="text" id="subtaskInput" placeholder="Add a step and tap +" onkeypress="if(event.key==='Enter') addSubtaskFromForm()" style="flex: 1;">
+                <button type="button" onclick="addSubtaskFromForm()" style="background: var(--primary); color: white; border: none; border-radius: 14px; width: 50px; font-size: 24px; font-weight: bold; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center;">+</button>
+            </div>
+            <div id="builderList" style="background: var(--surface); border-radius: 14px; border: 1px solid var(--border); display: none; overflow: hidden;"></div>
         </div>
 
         <div class="checkbox-container">
@@ -176,6 +197,19 @@
         let editingTaskOriginal = null;
         let globalTaskData = null;
         let activeSubjectFilter = 'All';
+        let currentSubtasks = []; 
+        let lookaheadDays = parseInt(localStorage.getItem('matrix_lookahead')) || 3;
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            const lookaheadEl = document.getElementById('lookaheadDays');
+            if(lookaheadEl) lookaheadEl.value = lookaheadDays;
+        });
+
+        function changeLookahead() {
+            lookaheadDays = parseInt(document.getElementById('lookaheadDays').value);
+            localStorage.setItem('matrix_lookahead', lookaheadDays);
+            if (globalTaskData) buildTaskList();
+        }
 
         let titleClickCount = 0, titleClickTimer = null;
         function handleTitleClick() {
@@ -208,6 +242,24 @@
                     document.getElementById('connectionStatus').innerText = "Cloud Sync Active";
                     document.getElementById('connectionStatus').className = "connection-pill status-cloud";
                     startTaskListener();
+
+                    // --- NEW: Sync Streak Stats for visual display ---
+                    database.ref(DATABASE_ID + '/streak').on('value', sSnap => {
+                        const s = sSnap.val() || { current: 0, lastDate: '' };
+                        let now = new Date();
+                        let todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+                        let yesterday = new Date(now);
+                        yesterday.setDate(yesterday.getDate() - 1);
+                        let yestStr = yesterday.getFullYear() + '-' + String(yesterday.getMonth()+1).padStart(2,'0') + '-' + String(yesterday.getDate()).padStart(2,'0');
+
+                        // Visually clear the streak if the user missed a day
+                        if (s.lastDate && s.lastDate !== todayStr && s.lastDate !== yestStr) {
+                            document.getElementById('stat-streak').innerText = "0";
+                        } else {
+                            document.getElementById('stat-streak').innerText = s.current;
+                        }
+                    });
+
                 } else {
                     alert("Password Incorrect or Changed. Access Denied.");
                     localStorage.removeItem('matrix_api_key');
@@ -236,6 +288,42 @@
             buildTaskList();
         }
 
+        function addSubtaskFromForm() {
+            const inp = document.getElementById('subtaskInput');
+            const text = inp.value.trim();
+            if(text) {
+                currentSubtasks.push({ text: text, done: false });
+                inp.value = '';
+                renderBuilderList();
+            }
+        }
+
+        function removeSubtask(idx) {
+            currentSubtasks.splice(idx, 1);
+            renderBuilderList();
+        }
+
+        function renderBuilderList() {
+            const list = document.getElementById('builderList');
+            if(currentSubtasks.length === 0) {
+                list.style.display = 'none';
+                list.innerHTML = '';
+                return;
+            }
+            list.style.display = 'block';
+            list.innerHTML = currentSubtasks.map((st, i) => `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: ${i === currentSubtasks.length - 1 ? 'none' : '1px solid var(--border)'}; font-size: 14px; font-weight: 600;">
+                    <span style="${st.done ? 'text-decoration:line-through; color:var(--text-sub);' : 'color:var(--text-main);'}">${st.text}</span>
+                    <button type="button" onclick="removeSubtask(${i})" style="background: none; border: none; color: var(--danger); font-size: 18px; font-weight: bold; cursor: pointer; padding: 0;">✕</button>
+                </div>
+            `).join('');
+        }
+
+        function toggleSubtask(taskId, subtaskIdx, isDone) {
+            if (!DATABASE_ID) return;
+            database.ref(DATABASE_ID + '/tasks/' + taskId + '/subtasks/' + subtaskIdx).update({ done: isDone });
+        }
+
         function buildTaskList() {
             const list = document.getElementById('taskList');
             const filterContainer = document.getElementById('subjectFilters');
@@ -249,23 +337,23 @@
                 return; 
             }
             
-            let allTasks = Object.keys(data).map(k => ({id: k, ...data[k]})).sort((a,b) => new Date(a.due) - new Date(b.due));
+            let allTasks = Object.keys(data)
+                .map(k => ({id: k, ...data[k]}))
+                .filter(t => !t.pending_completion) 
+                .sort((a,b) => new Date(a.due) - new Date(b.due));
             
-            // Generate Subject Pills
             let subjects = ['All', ...new Set(allTasks.map(t => t.subject).filter(Boolean))];
             
-            // If the currently selected subject filter was deleted, reset to 'All'
             if (!subjects.includes(activeSubjectFilter)) activeSubjectFilter = 'All';
 
             filterContainer.innerHTML = subjects.map(s => 
                 `<div class="subject-pill ${s === activeSubjectFilter ? 'active' : ''}" onclick="filterBySubject('${s.replace(/'/g, "\\'")}')">${s}</div>`
             ).join('');
 
-            // Calculate Global Stats (Always reflects ALL tasks so numbers don't jump around when filtering)
             let overdueOrTodayCount = 0;
             let now = new Date();
             let todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-            let threeDaysEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3, 23, 59, 59);
+            let lookaheadEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + lookaheadDays, 23, 59, 59);
 
             allTasks.forEach(t => {
                 let d = new Date(t.due);
@@ -274,7 +362,6 @@
             document.getElementById('stat-total').innerText = allTasks.length;
             document.getElementById('stat-urgent').innerText = overdueOrTodayCount;
 
-            // Apply the chosen filter
             let filteredTasks = activeSubjectFilter === 'All' ? allTasks : allTasks.filter(t => t.subject === activeSubjectFilter);
 
             if (filteredTasks.length === 0) {
@@ -282,11 +369,10 @@
                 return;
             }
 
-            // Categorize into Timeframes
             let groups = {
                 'Overdue': [],
                 'Due Today': [],
-                'Due in 3 Days': [],
+                [`Due in ${lookaheadDays} Days`]: [],
                 'Upcoming': []
             };
 
@@ -294,11 +380,10 @@
                 let d = new Date(t.due);
                 if (d < now) groups['Overdue'].push(t);
                 else if (d <= todayEnd) groups['Due Today'].push(t);
-                else if (d <= threeDaysEnd) groups['Due in 3 Days'].push(t);
+                else if (d <= lookaheadEnd) groups[`Due in ${lookaheadDays} Days`].push(t);
                 else groups['Upcoming'].push(t);
             });
 
-            // Build categorized HTML
             let html = "";
             for (let [groupName, tasks] of Object.entries(groups)) {
                 if (tasks.length > 0) {
@@ -313,20 +398,34 @@
                         const dateStr = d.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'});
                         const timeStr = d.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'});
                         
-                        html += `<div class="task-wrapper card-accent-${acc}">
-                        <div class="check-circle" onclick="completeTask('${t.id}', this)"></div><div class="task-icon">${icon}</div>
-                        <div class="task-info" onclick='openEditMode(${JSON.stringify(t).replace(/'/g, "&#39;")})'>
-                            <p class="task-title">${t.title}</p>
-                            <p class="task-sub">${t.type} • ${t.subject} ${t.recurring ? '🔄' : ''}</p>
-                        </div>
-                        <div class="task-meta"><div class="task-date">${dateStr}<br><span style="font-weight:500; font-size:10px; color:var(--text-sub);">${timeStr}</span></div></div></div>`;
+                        let subHtml = '';
+                        if(t.subtasks && t.subtasks.length > 0) {
+                            subHtml = `<div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); margin-left: 41px;">` + 
+                                t.subtasks.map((st, idx) => `
+                                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                                        <input type="checkbox" ${st.done ? 'checked' : ''} onchange="toggleSubtask('${t.id}', ${idx}, this.checked)" style="width: 18px; height: 18px; margin-right: 10px; accent-color: var(--primary); flex-shrink: 0;">
+                                        <span style="font-size: 13px; font-weight: 600; color: ${st.done ? 'var(--text-sub)' : 'var(--text-main)'}; text-decoration: ${st.done ? 'line-through' : 'none'};">${st.text}</span>
+                                    </div>
+                                `).join('') + `</div>`;
+                        }
+
+                        html += `<div class="task-wrapper card-accent-${acc}" style="flex-direction: column; align-items: stretch;">
+                            <div style="display: flex; align-items: center; width: 100%;">
+                                <div class="check-circle" onclick="completeTask('${t.id}', this)"></div>
+                                <div class="task-icon">${icon}</div>
+                                <div class="task-info" onclick='openEditMode(${JSON.stringify(t).replace(/'/g, "&#39;")})'>
+                                    <p class="task-title">${t.title}</p>
+                                    <p class="task-sub">${t.type} • ${t.subject} ${t.recurring ? '🔄' : ''}</p>
+                                </div>
+                                <div class="task-meta"><div class="task-date">${dateStr}<br><span style="font-weight:500; font-size:10px; color:var(--text-sub);">${timeStr}</span></div></div>
+                            </div>
+                            ${subHtml}
+                        </div>`;
                     });
                 }
             }
             list.innerHTML = html;
         }
-
-        // --- NEW EDIT AND RECURRING LOGIC ---
 
         function toggleRecur() {
             document.getElementById('recurSettings').style.display = document.getElementById('taskRecurring').checked ? 'block' : 'none';
@@ -335,6 +434,9 @@
         function clearForm() {
             editingTaskId = null;
             editingTaskOriginal = null;
+            currentSubtasks = []; 
+            renderBuilderList(); 
+            
             document.getElementById('taskTitle').value = '';
             document.getElementById('taskSubject').value = '';
             document.getElementById('taskDue').value = '';
@@ -349,6 +451,9 @@
         function openEditMode(task) {
             editingTaskId = task.id;
             editingTaskOriginal = task;
+            
+            currentSubtasks = task.subtasks ? JSON.parse(JSON.stringify(task.subtasks)) : []; 
+            renderBuilderList();
             
             document.getElementById('taskTitle').value = task.title || '';
             document.getElementById('taskSubject').value = task.subject || '';
@@ -389,7 +494,12 @@
                 shouldRecur = false;
             }
             if (shouldRecur) {
-                let newTask = {...task, due: nextDue, processed_by_pc: true}; 
+                let nextSubtasks = null;
+                if (task.subtasks) {
+                    nextSubtasks = task.subtasks.map(st => ({ text: st.text, done: false }));
+                }
+
+                let newTask = {...task, due: nextDue, processed_by_pc: true, subtasks: nextSubtasks}; 
                 delete newTask.id;
                 await database.ref(DATABASE_ID + '/tasks/' + (Date.now() + Math.floor(Math.random() * 1000))).set(newTask);
             }
@@ -415,15 +525,14 @@
                 recurring: isRecur,
                 interval: isRecur ? document.getElementById('taskInterval').value : null,
                 recur_until: isRecur ? recurUntil : null,
+                subtasks: currentSubtasks.length > 0 ? currentSubtasks : null, 
                 last_alert: editingTaskOriginal ? (editingTaskOriginal.last_alert || 0) : 0
             };
 
             document.getElementById('loadingOverlay').style.display = 'flex';
 
             if (editingTaskId) {
-                // UPDATE LOGIC
                 const thisOccurOnly = document.getElementById('taskThisOccurOnly').checked;
-                
                 if (thisOccurOnly && editingTaskOriginal.recurring) {
                     await spawnNextOccurrence(editingTaskOriginal);
                     payload.recurring = false;
@@ -432,8 +541,7 @@
                 }
                 await database.ref(DATABASE_ID + '/tasks/' + editingTaskId).update(payload);
             } else {
-                // CREATE NEW LOGIC
-                payload.processed_by_pc = false; // Trigger PC HUD to send receipt email
+                payload.processed_by_pc = false; 
                 await database.ref(DATABASE_ID + '/tasks/' + Date.now()).set(payload);
             }
 
@@ -446,14 +554,50 @@
             if (!DATABASE_ID) return;
             el.classList.add('completed');
             
-            // Check if it's recurring before deleting
             let task;
             await database.ref(DATABASE_ID + '/tasks/' + taskId).once('value', snap => { task = snap.val(); });
             if (task && task.recurring) await spawnNextOccurrence(task);
 
+            // --- NEW: THE INVISIBLE STREAK ENGINE ---
+            let streakSnap = await database.ref(DATABASE_ID + '/streak').once('value');
+            let streak = streakSnap.val() || { current: 0, lastDate: '' };
+            
+            let now = new Date();
+            let todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+            let yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+            let yestStr = yesterday.getFullYear() + '-' + String(yesterday.getMonth()+1).padStart(2,'0') + '-' + String(yesterday.getDate()).padStart(2,'0');
+
+            let oldStreak = streak.current;
+            if (streak.lastDate === yestStr) {
+                streak.current++;
+                streak.lastDate = todayStr;
+            } else if (streak.lastDate !== todayStr) {
+                streak.current = 1;
+                streak.lastDate = todayStr;
+            }
+            
+            if (streak.current !== oldStreak) {
+                await database.ref(DATABASE_ID + '/streak').update(streak);
+                
+                // Phantom Task Trick: Injects an instantly-completed task so PC emails you automatically
+                if (streak.current > 1) { 
+                    await database.ref(DATABASE_ID + '/tasks/' + (Date.now() + 500)).set({
+                        title: `${streak.current} Day Streak! 🔥`,
+                        subject: 'Keep it up!',
+                        type: 'Achievement',
+                        due: new Date().toISOString(),
+                        priority: 'Normal',
+                        recurring: false,
+                        processed_by_pc: true,
+                        pending_completion: true 
+                    });
+                }
+            }
+
             setTimeout(async () => {
                 document.getElementById('loadingOverlay').style.display = 'flex';
-                await database.ref(DATABASE_ID + '/tasks/' + taskId).remove();
+                await database.ref(DATABASE_ID + '/tasks/' + taskId).update({ pending_completion: true });
                 document.getElementById('loadingOverlay').style.display = 'none';
             }, 300);
         }
@@ -466,7 +610,6 @@
         }
 
         function switchNavTab(t) {
-            // If they click the "Deploy/New" button, clear the form so they don't accidentally edit
             if (t === 'create' && !editingTaskId) clearForm();
             if (t === 'matrix') clearForm(); 
             switchTabView(t);
