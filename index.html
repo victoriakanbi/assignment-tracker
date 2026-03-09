@@ -33,7 +33,6 @@
         .active-view { display: block; }
         @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* THE FIX: Adjusted to 3 equal columns to gracefully fit the Streak Stat */
         .dashboard-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
         .stat-card { background: var(--surface); padding: 12px 10px; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.03); text-align: center; }
         .stat-val { font-size: 24px; font-weight: 800; margin: 0 0 4px 0; }
@@ -96,17 +95,19 @@
             <div class="stat-card"><p class="stat-val" id="stat-streak" style="color:var(--warning);">0</p><p class="stat-label">Streak 🔥</p></div>
         </div>
         
-        <!-- Interactive Subject Filters & Dynamic Lookahead -->
-        <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center;">
-            <div id="subjectFilters" class="subject-filters" style="margin-bottom: 0; flex: 1;"></div>
-            <select id="lookaheadDays" onchange="changeLookahead()" style="flex-shrink: 0; padding: 8px 12px; border-radius: 20px; font-size: 11px; font-weight: 800; background: var(--surface); color: var(--text-main); border: 1px solid var(--border); outline: none;">
-                <option value="1">1 Day</option>
-                <option value="2">2 Days</option>
-                <option value="3">3 Days</option>
-                <option value="4">4 Days</option>
-                <option value="5">5 Days</option>
+        <!-- FIX: Controls are now securely stacked, taking exactly 50% width to prevent ANY off-screen layout overflow -->
+        <div style="display: flex; gap: 10px; margin-bottom: 12px; width: 100%; box-sizing: border-box;">
+            <select id="sortMode" onchange="changeSortMode()" style="flex: 1; min-width: 0; padding: 10px; border-radius: 12px; font-size: 13px; font-weight: 800; background: var(--surface); color: var(--text-main); border: 1px solid var(--border); outline: none;">
+                <option value="date">📅 By Date</option>
+                <option value="subject">📚 By Subject</option>
+            </select>
+            <!-- FIX: Dynamic contextual filter button -->
+            <select id="secondaryFilter" onchange="changeSecondaryFilter()" style="flex: 1; min-width: 0; padding: 10px; border-radius: 12px; font-size: 13px; font-weight: 800; background: var(--surface); color: var(--text-main); border: 1px solid var(--border); outline: none; text-overflow: ellipsis; white-space: nowrap;">
+                <!-- Dynamically Populated by JS -->
             </select>
         </div>
+        
+        <div id="subjectFilters" class="subject-filters" style="margin-bottom: 15px; width: 100%;"></div>
         
         <div id="taskList"></div>
     </div>
@@ -175,7 +176,6 @@
     <script>
         const GITHUB_URL = "https://victoriakanbi.github.io/assignment-tracker/";
         
-        // --- OFFLINE REDIRECT ENGINE ---
         if (window.location.hostname && !window.location.hostname.includes('github.io')) {
             setInterval(() => {
                 fetch('/').catch(() => {
@@ -184,7 +184,6 @@
             }, 8000); 
         }
         
-        // --- FIREBASE GATEKEEPER LOGIC ---
         const firebaseConfig = { databaseURL: "https://fluxgate-victor-default-rtdb.firebaseio.com" };
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
@@ -192,7 +191,6 @@
         let API_KEY = localStorage.getItem('matrix_api_key');
         let DATABASE_ID = null; 
         
-        // Form & State logic
         let editingTaskId = null;
         let editingTaskOriginal = null;
         let globalTaskData = null;
@@ -201,13 +199,50 @@
         let lookaheadDays = parseInt(localStorage.getItem('matrix_lookahead')) || 3;
         
         document.addEventListener('DOMContentLoaded', () => {
-            const lookaheadEl = document.getElementById('lookaheadDays');
-            if(lookaheadEl) lookaheadEl.value = lookaheadDays;
+            const sortEl = document.getElementById('sortMode');
+            if(sortEl) {
+                const savedSort = localStorage.getItem('matrix_sort') || 'date';
+                sortEl.value = savedSort;
+            }
         });
 
-        function changeLookahead() {
-            lookaheadDays = parseInt(document.getElementById('lookaheadDays').value);
-            localStorage.setItem('matrix_lookahead', lookaheadDays);
+        // FIX: Replaces changeLookahead. Handles both "Days" and "Subject" drops dynamically
+        function changeSecondaryFilter() {
+            let mode = document.getElementById('sortMode').value;
+            let val = document.getElementById('secondaryFilter').value;
+            if (mode === 'date') {
+                lookaheadDays = parseInt(val);
+                localStorage.setItem('matrix_lookahead', lookaheadDays);
+            } else {
+                activeSubjectFilter = val;
+            }
+            if (globalTaskData) buildTaskList();
+        }
+
+        // FIX: Populates the right button based on what the left button is doing
+        function populateSecondaryFilter(subjects) {
+            const sortMode = document.getElementById('sortMode') ? document.getElementById('sortMode').value : 'date';
+            const filterEl = document.getElementById('secondaryFilter');
+            if (!filterEl) return;
+            
+            let html = '';
+            if (sortMode === 'date') {
+                [1, 2, 3, 4, 5].forEach(d => {
+                    let selected = (d == lookaheadDays) ? 'selected' : '';
+                    html += `<option value="${d}" ${selected}>${d} Day${d > 1 ? 's' : ''}</option>`;
+                });
+            } else {
+                subjects.forEach(s => {
+                    let selected = (s === activeSubjectFilter) ? 'selected' : '';
+                    let displayLabel = s === 'All' ? 'All Subjects' : s;
+                    html += `<option value="${s.replace(/'/g, "\\'")}" ${selected}>${displayLabel}</option>`;
+                });
+            }
+            filterEl.innerHTML = html;
+        }
+
+        function changeSortMode() {
+            localStorage.setItem('matrix_sort', document.getElementById('sortMode').value);
             if (globalTaskData) buildTaskList();
         }
 
@@ -243,7 +278,6 @@
                     document.getElementById('connectionStatus').className = "connection-pill status-cloud";
                     startTaskListener();
 
-                    // --- NEW: Sync Streak Stats for visual display ---
                     database.ref(DATABASE_ID + '/streak').on('value', sSnap => {
                         const s = sSnap.val() || { current: 0, lastDate: '' };
                         let now = new Date();
@@ -252,7 +286,6 @@
                         yesterday.setDate(yesterday.getDate() - 1);
                         let yestStr = yesterday.getFullYear() + '-' + String(yesterday.getMonth()+1).padStart(2,'0') + '-' + String(yesterday.getDate()).padStart(2,'0');
 
-                        // Visually clear the streak if the user missed a day
                         if (s.lastDate && s.lastDate !== todayStr && s.lastDate !== yestStr) {
                             document.getElementById('stat-streak').innerText = "0";
                         } else {
@@ -327,6 +360,7 @@
         function buildTaskList() {
             const list = document.getElementById('taskList');
             const filterContainer = document.getElementById('subjectFilters');
+            const sortMode = document.getElementById('sortMode') ? document.getElementById('sortMode').value : 'date';
             const data = globalTaskData;
 
             if (!data) { 
@@ -334,6 +368,7 @@
                 document.getElementById('stat-total').innerText = "0"; 
                 document.getElementById('stat-urgent').innerText = "0"; 
                 filterContainer.innerHTML = '';
+                populateSecondaryFilter(['All']);
                 return; 
             }
             
@@ -346,9 +381,14 @@
             
             if (!subjects.includes(activeSubjectFilter)) activeSubjectFilter = 'All';
 
+            populateSecondaryFilter(subjects);
+
             filterContainer.innerHTML = subjects.map(s => 
                 `<div class="subject-pill ${s === activeSubjectFilter ? 'active' : ''}" onclick="filterBySubject('${s.replace(/'/g, "\\'")}')">${s}</div>`
             ).join('');
+            
+            // CLEAN UP: Hide subject pills when the dropdown handles the subjects so you don't have duplicated UI
+            filterContainer.style.display = (sortMode === 'subject') ? 'none' : 'flex';
 
             let overdueOrTodayCount = 0;
             let now = new Date();
@@ -365,24 +405,40 @@
             let filteredTasks = activeSubjectFilter === 'All' ? allTasks : allTasks.filter(t => t.subject === activeSubjectFilter);
 
             if (filteredTasks.length === 0) {
-                list.innerHTML = '<p style="text-align:center; color:#888; margin-top:40px;">No assignments pending for this subject.</p>';
+                list.innerHTML = '<p style="text-align:center; color:#888; margin-top:40px;">No assignments pending for this filter.</p>';
                 return;
             }
 
-            let groups = {
-                'Overdue': [],
-                'Due Today': [],
-                [`Due in ${lookaheadDays} Days`]: [],
-                'Upcoming': []
-            };
+            let groups = {};
+            
+            if (sortMode === 'subject') {
+                filteredTasks.forEach(t => {
+                    let sub = t.subject || 'Uncategorized';
+                    if (!groups[sub]) groups[sub] = [];
+                    groups[sub].push(t);
+                });
+                
+                let sortedKeys = Object.keys(groups).sort();
+                let newGroups = {};
+                sortedKeys.forEach(k => newGroups[k] = groups[k]);
+                groups = newGroups;
+                
+            } else {
+                groups = {
+                    'Overdue': [],
+                    'Due Today': [],
+                    [`Due in ${lookaheadDays} Days`]: [],
+                    'Upcoming': []
+                };
 
-            filteredTasks.forEach(t => {
-                let d = new Date(t.due);
-                if (d < now) groups['Overdue'].push(t);
-                else if (d <= todayEnd) groups['Due Today'].push(t);
-                else if (d <= lookaheadEnd) groups[`Due in ${lookaheadDays} Days`].push(t);
-                else groups['Upcoming'].push(t);
-            });
+                filteredTasks.forEach(t => {
+                    let d = new Date(t.due);
+                    if (d < now) groups['Overdue'].push(t);
+                    else if (d <= todayEnd) groups['Due Today'].push(t);
+                    else if (d <= lookaheadEnd) groups[`Due in ${lookaheadDays} Days`].push(t);
+                    else groups['Upcoming'].push(t);
+                });
+            }
 
             let html = "";
             for (let [groupName, tasks] of Object.entries(groups)) {
@@ -558,7 +614,6 @@
             await database.ref(DATABASE_ID + '/tasks/' + taskId).once('value', snap => { task = snap.val(); });
             if (task && task.recurring) await spawnNextOccurrence(task);
 
-            // --- NEW: THE INVISIBLE STREAK ENGINE ---
             let streakSnap = await database.ref(DATABASE_ID + '/streak').once('value');
             let streak = streakSnap.val() || { current: 0, lastDate: '' };
             
@@ -580,7 +635,6 @@
             if (streak.current !== oldStreak) {
                 await database.ref(DATABASE_ID + '/streak').update(streak);
                 
-                // Phantom Task Trick: Injects an instantly-completed task so PC emails you automatically
                 if (streak.current > 1) { 
                     await database.ref(DATABASE_ID + '/tasks/' + (Date.now() + 500)).set({
                         title: `${streak.current} Day Streak! 🔥`,
