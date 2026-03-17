@@ -102,13 +102,11 @@
             <div class="stat-card"><p class="stat-val" id="stat-streak" style="color:var(--warning);">0</p><p class="stat-label">Streak 🔥</p></div>
         </div>
         
-        <!-- FIX: Controls are now securely stacked, taking exactly 50% width to prevent ANY off-screen layout overflow -->
         <div style="display: flex; gap: 10px; margin-bottom: 12px; width: 100%; box-sizing: border-box;">
             <select id="sortMode" onchange="changeSortMode()" style="flex: 1; min-width: 0; padding: 10px; border-radius: 12px; font-size: 13px; font-weight: 800; background: var(--surface); color: var(--text-main); border: 1px solid var(--border); outline: none;">
                 <option value="date">📅 By Date</option>
                 <option value="subject">📚 By Subject</option>
             </select>
-            <!-- FIX: Dynamic contextual filter button -->
             <select id="secondaryFilter" onchange="changeSecondaryFilter()" style="flex: 1; min-width: 0; padding: 10px; border-radius: 12px; font-size: 13px; font-weight: 800; background: var(--surface); color: var(--text-main); border: 1px solid var(--border); outline: none; text-overflow: ellipsis; white-space: nowrap;">
                 <!-- Dynamically Populated by JS -->
             </select>
@@ -205,6 +203,9 @@
         let currentSubtasks = []; 
         let lookaheadDays = parseInt(localStorage.getItem('matrix_lookahead')) || 3;
         
+        // FIX: Stateful Set to track which cards are currently expanded
+        let expandedTasks = new Set();
+        
         document.addEventListener('DOMContentLoaded', () => {
             const sortEl = document.getElementById('sortMode');
             if(sortEl) {
@@ -212,19 +213,16 @@
                 sortEl.value = savedSort;
             }
 
-            // Initialize SortableJS for drag-and-drop Subtasks
             const builderListEl = document.getElementById('builderList');
             if (builderListEl && typeof Sortable !== 'undefined') {
                 Sortable.create(builderListEl, {
                     animation: 150,
-                    handle: '.drag-handle', // Only drag when touching the hamburger icon
+                    handle: '.drag-handle',
                     ghostClass: 'sortable-ghost',
                     onEnd: function (evt) {
                         if (evt.oldIndex !== evt.newIndex) {
-                            // Update the underlying array to match the visual DOM drop
                             const movedItem = currentSubtasks.splice(evt.oldIndex, 1)[0];
                             currentSubtasks.splice(evt.newIndex, 0, movedItem);
-                            // Re-render to correctly reassign the remove/delete indices
                             renderBuilderList(); 
                         }
                     }
@@ -232,7 +230,6 @@
             }
         });
 
-        // FIX: Replaces changeLookahead. Handles both "Days" and "Subject" drops dynamically
         function changeSecondaryFilter() {
             let mode = document.getElementById('sortMode').value;
             let val = document.getElementById('secondaryFilter').value;
@@ -245,7 +242,6 @@
             if (globalTaskData) buildTaskList();
         }
 
-        // FIX: Populates the right button based on what the left button is doing
         function populateSecondaryFilter(subjects) {
             const sortMode = document.getElementById('sortMode') ? document.getElementById('sortMode').value : 'date';
             const filterEl = document.getElementById('secondaryFilter');
@@ -362,6 +358,7 @@
             renderBuilderList();
         }
 
+        // FIX: Added flex wrapping and min-width rules here to prevent the builder list from stretching out of bounds
         function renderBuilderList() {
             const list = document.getElementById('builderList');
             if(currentSubtasks.length === 0) {
@@ -371,10 +368,10 @@
             }
             list.style.display = 'block';
             list.innerHTML = currentSubtasks.map((st, i) => `
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: ${i === currentSubtasks.length - 1 ? 'none' : '1px solid var(--border)'}; font-size: 14px; font-weight: 600; background: var(--surface);">
-                    <div style="display: flex; align-items: center; flex: 1;">
-                        <span class="drag-handle" style="color: #94A3B8; margin-right: 12px; cursor: grab; font-size: 18px;">☰</span>
-                        <span style="${st.done ? 'text-decoration:line-through; color:var(--text-sub);' : 'color:var(--text-main);'}">${st.text}</span>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 12px 16px; border-bottom: ${i === currentSubtasks.length - 1 ? 'none' : '1px solid var(--border)'}; font-size: 14px; font-weight: 600; background: var(--surface);">
+                    <div style="display: flex; align-items: flex-start; flex: 1; min-width: 0;">
+                        <span class="drag-handle" style="color: #94A3B8; margin-right: 12px; cursor: grab; font-size: 18px; margin-top: -2px;">☰</span>
+                        <span style="flex: 1; min-width: 0; white-space: normal; word-wrap: break-word; line-height: 1.4; ${st.done ? 'text-decoration:line-through; color:var(--text-sub);' : 'color:var(--text-main);'}">${st.text}</span>
                     </div>
                     <button type="button" onclick="removeSubtask(${i})" style="background: none; border: none; color: var(--danger); font-size: 18px; font-weight: bold; cursor: pointer; padding: 0; margin-left: 10px;">✕</button>
                 </div>
@@ -384,6 +381,26 @@
         function toggleSubtask(taskId, subtaskIdx, isDone) {
             if (!DATABASE_ID) return;
             database.ref(DATABASE_ID + '/tasks/' + taskId + '/subtasks/' + subtaskIdx).update({ done: isDone });
+        }
+        
+        // FIX: The toggle handler that collapses or expands the subtasks
+        function toggleSubtaskView(taskId, event) {
+            if (event) {
+                event.stopPropagation(); // Prevents it from accidentally opening the edit window
+                event.preventDefault();
+            }
+            const subContainer = document.getElementById('subtasks-' + taskId);
+            const toggleIcon = document.getElementById('toggle-icon-' + taskId);
+            
+            if (expandedTasks.has(taskId)) {
+                expandedTasks.delete(taskId);
+                subContainer.style.display = 'none';
+                toggleIcon.innerText = toggleIcon.innerText.replace('▼', '▶');
+            } else {
+                expandedTasks.add(taskId);
+                subContainer.style.display = 'block';
+                toggleIcon.innerText = toggleIcon.innerText.replace('▶', '▼');
+            }
         }
 
         function buildTaskList() {
@@ -416,7 +433,6 @@
                 `<div class="subject-pill ${s === activeSubjectFilter ? 'active' : ''}" onclick="filterBySubject('${s.replace(/'/g, "\\'")}')">${s}</div>`
             ).join('');
             
-            // CLEAN UP: Hide subject pills when the dropdown handles the subjects so you don't have duplicated UI
             filterContainer.style.display = (sortMode === 'subject') ? 'none' : 'flex';
 
             let overdueOrTodayCount = 0;
@@ -483,13 +499,18 @@
                         const dateStr = d.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'});
                         const timeStr = d.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'});
                         
+                        // Check if the current user left this task expanded before the render sync
+                        let isExpanded = expandedTasks.has(t.id);
+                        let displayStyle = isExpanded ? 'block' : 'none';
+                        let iconChar = isExpanded ? '▼' : '▶';
+                        
                         let subHtml = '';
                         if(t.subtasks && t.subtasks.length > 0) {
-                            subHtml = `<div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); margin-left: 41px;">` + 
+                            subHtml = `<div id="subtasks-${t.id}" style="display: ${displayStyle}; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); margin-left: 41px;">` + 
                                 t.subtasks.map((st, idx) => `
-                                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                                        <input type="checkbox" ${st.done ? 'checked' : ''} onchange="toggleSubtask('${t.id}', ${idx}, this.checked)" style="width: 18px; height: 18px; margin-right: 10px; accent-color: var(--primary); flex-shrink: 0;">
-                                        <span style="font-size: 13px; font-weight: 600; color: ${st.done ? 'var(--text-sub)' : 'var(--text-main)'}; text-decoration: ${st.done ? 'line-through' : 'none'};">${st.text}</span>
+                                    <div style="display: flex; align-items: flex-start; margin-bottom: 8px;">
+                                        <input type="checkbox" ${st.done ? 'checked' : ''} onchange="toggleSubtask('${t.id}', ${idx}, this.checked)" style="width: 18px; height: 18px; margin-right: 10px; margin-top: 1px; accent-color: var(--primary); flex-shrink: 0;">
+                                        <span style="flex: 1; min-width: 0; font-size: 13px; font-weight: 600; color: ${st.done ? 'var(--text-sub)' : 'var(--text-main)'}; text-decoration: ${st.done ? 'line-through' : 'none'}; white-space: normal; word-wrap: break-word; line-height: 1.4;">${st.text}</span>
                                     </div>
                                 `).join('') + `</div>`;
                         }
@@ -498,9 +519,16 @@
                             <div style="display: flex; align-items: center; width: 100%;">
                                 <div class="check-circle" onclick="completeTask('${t.id}', this)"></div>
                                 <div class="task-icon">${icon}</div>
-                                <div class="task-info" onclick='openEditMode(${JSON.stringify(t).replace(/'/g, "&#39;")})'>
-                                    <p class="task-title">${t.title}</p>
-                                    <p class="task-sub">${t.type} • ${t.subject} ${t.recurring ? '🔄' : ''}</p>
+                                <div class="task-info">
+                                    <div onclick='openEditMode(${JSON.stringify(t).replace(/'/g, "&#39;")})' style="cursor: pointer;">
+                                        <p class="task-title">${t.title}</p>
+                                        <p class="task-sub">${t.type} • ${t.subject} ${t.recurring ? '🔄' : ''}</p>
+                                    </div>
+                                    ${t.subtasks && t.subtasks.length > 0 ? `
+                                    <div style="margin-top: 4px; display: inline-block; padding: 4px 0;" onclick="toggleSubtaskView('${t.id}', event)">
+                                        <span id="toggle-icon-${t.id}" style="color: var(--primary); font-size: 11px; font-weight: 800; cursor: pointer; user-select: none;">${iconChar} ${t.subtasks.length} Subtasks</span>
+                                    </div>
+                                    ` : ''}
                                 </div>
                                 <div class="task-meta"><div class="task-date">${dateStr}<br><span style="font-weight:500; font-size:10px; color:var(--text-sub);">${timeStr}</span></div></div>
                             </div>
