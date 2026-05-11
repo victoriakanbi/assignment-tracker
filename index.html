@@ -12,6 +12,9 @@
     
     <!-- SortableJS for mobile-friendly drag and drop -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+
+    <!-- Chart.js for Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
         :root {
@@ -20,45 +23,53 @@
             --border: #E2E8F0; --success: #10B981; --danger: #EF4444; --warning: #F59E0B;
         }
 
-        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text-main); margin: 0; padding: 0; padding-bottom: calc(90px + env(safe-area-inset-bottom)); -webkit-tap-highlight-color: transparent; user-select: none; }
-        input, select { user-select: auto; }
+        /* Dark Mode Variables */
+        [data-theme="dark"] {
+            --bg: #0F172A; --surface: #1E293B; --primary: #6366F1; 
+            --primary-hover: #818CF8; --text-main: #F8FAFC; --text-sub: #94A3B8;
+            --border: #334155;
+        }
+
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text-main); margin: 0; padding: 0; padding-bottom: calc(80px + env(safe-area-inset-bottom)); -webkit-tap-highlight-color: transparent; user-select: none; transition: background 0.3s, color 0.3s; }
+        input, select, textarea { user-select: auto; transition: background 0.3s, color 0.3s, border-color 0.3s; }
         ::-webkit-scrollbar { display: none; }
 
-        .header { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); padding: calc(20px + env(safe-area-inset-top)) 20px 15px 20px; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; display: flex; justify-content: space-between; align-items: center; }
+        .header { background: rgba(var(--surface-rgb), 0.9); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); padding: calc(20px + env(safe-area-inset-top)) 20px 15px 20px; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; display: flex; justify-content: space-between; align-items: center; transition: border-color 0.3s; background: var(--surface); }
         .header-info h2 { margin: 0; font-weight: 800; font-size: 24px; letter-spacing: -0.5px; cursor: pointer; }
         .header-info p { margin: 4px 0 0 0; color: var(--primary); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
         
         .connection-pill { padding: 5px 12px; border-radius: 20px; font-size: 10px; font-weight: 800; text-transform: uppercase; transition: 0.2s; }
         .status-cloud { background: #DBEAFE; color: #1E40AF; }
         .status-error { background: #FEE2E2; color: #991B1B; }
+        [data-theme="dark"] .status-cloud { background: #1E3A8A; color: #DBEAFE; }
+        [data-theme="dark"] .status-error { background: #7F1D1D; color: #FEE2E2; }
 
         .view-container { display: none; padding: 20px; max-width: 600px; margin: 0 auto; animation: fadeUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
         .active-view { display: block; }
         @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         .dashboard-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-        .stat-card { background: var(--surface); padding: 12px 10px; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.03); text-align: center; }
+        .stat-card { background: var(--surface); padding: 12px 10px; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.03); text-align: center; transition: 0.3s; }
         .stat-val { font-size: 24px; font-weight: 800; margin: 0 0 4px 0; }
         .stat-label { font-size: 10px; font-weight: 700; color: var(--text-sub); margin: 0; text-transform: uppercase; }
 
         /* Subject Filtering UI */
         .subject-filters { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 5px; -webkit-overflow-scrolling: touch; }
         .subject-filters::-webkit-scrollbar { display: none; }
-        .subject-pill { padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 700; background: var(--surface); border: 1px solid var(--border); color: var(--text-sub); white-space: nowrap; cursor: pointer; transition: 0.2s; }
+        .subject-pill { padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 700; background: var(--surface); border: 1px solid var(--border); color: var(--text-sub); white-space: nowrap; cursor: pointer; transition: 0.2s; display: flex; align-items: center; }
         .subject-pill.active { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2); }
         
         .section-header { font-size: 12px; font-weight: 800; color: var(--text-sub); text-transform: uppercase; letter-spacing: 1px; margin: 20px 0 8px 5px; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
 
-        /* HEIGHT REDUCTION FIXES APPLIED HERE */
-        .task-wrapper { background: var(--surface); border-radius: 14px; padding: 10px 14px; margin-bottom: 10px; border: 1px solid var(--border); border-left: 5px solid var(--border); display: flex; align-items: center; }
+        .task-wrapper { background: var(--surface); border-radius: 14px; padding: 10px 14px; margin-bottom: 10px; border: 1px solid var(--border); border-left: 5px solid var(--border); display: flex; align-items: center; transition: 0.3s; }
         .card-accent-critical { border-left-color: var(--danger); }
         .card-accent-high { border-left-color: var(--warning); }
         .card-accent-normal { border-left-color: var(--primary); }
         
-        .check-circle { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #CBD5E1; margin-right: 12px; flex-shrink: 0; transition: 0.2s; background: #F8FAFC; }
+        .check-circle { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border); margin-right: 12px; flex-shrink: 0; transition: 0.2s; background: var(--bg); }
         .check-circle.completed { background: var(--success); border-color: var(--success); transform: scale(1.1); }
 
-        .task-icon { background: #F1F5F9; width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; margin-right: 12px; flex-shrink: 0; }
+        .task-icon { background: var(--bg); width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; margin-right: 12px; flex-shrink: 0; border: 1px solid var(--border); }
         .task-info { flex-grow: 1; min-width: 0; cursor: pointer; } 
         .task-title { font-weight: 700; font-size: 15px; margin: 0 0 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .task-sub { font-size: 12px; color: var(--text-sub); margin: 0; }
@@ -66,32 +77,118 @@
 
         .form-group { margin-bottom: 20px; }
         label { font-size: 12px; font-weight: 700; color: var(--text-sub); display: block; margin-bottom: 8px; text-transform: uppercase; }
-        input[type="text"], input[type="datetime-local"], select { width: 100%; padding: 16px; border-radius: 14px; border: 1px solid var(--border); box-sizing: border-box; font-size: 16px; -webkit-appearance: none; background: white; }
-        
+        input[type="text"], input[type="datetime-local"], input[type="number"], select, textarea { width: 100%; padding: 16px; border-radius: 14px; border: 1px solid var(--border); box-sizing: border-box; font-size: 16px; -webkit-appearance: none; background: var(--surface); color: var(--text-main); font-family: inherit; }
+        textarea { resize: vertical; }
+
         .checkbox-container { display: flex; align-items: center; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 20px; }
         .checkbox-container input { width: 20px; height: 20px; margin-right: 10px; accent-color: var(--primary); }
         .special-checkbox { color: var(--primary); }
 
         button.primary-btn { background: var(--primary); color: white; border: none; padding: 18px; border-radius: 14px; font-weight: 800; width: 100%; cursor: pointer; font-size: 16px; margin-top: 10px; transition: 0.2s; }
         button.primary-btn:active { transform: scale(0.97); }
+        
+        button.danger-btn { background: var(--danger); color: white; border: none; padding: 18px; border-radius: 14px; font-weight: 800; width: 100%; cursor: pointer; font-size: 16px; margin-top: 10px; transition: 0.2s; }
+        button.danger-btn:active { transform: scale(0.97); }
 
-        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border-top: 1px solid rgba(0,0,0,0.08); display: flex; padding-bottom: env(safe-area-inset-bottom); z-index: 100; }
-        .nav-item { flex: 1; text-align: center; padding: 15px 0; color: var(--text-sub); font-weight: 700; font-size: 12px; cursor: pointer; }
-        .nav-item.active { color: var(--primary); }
-
-        #loadingOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 999; justify-content: center; align-items: center; font-weight: 800; color: var(--primary); }
+        #loadingOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(var(--surface-rgb), 0.9); z-index: 999; justify-content: center; align-items: center; font-weight: 800; color: var(--primary); }
 
         /* Drag and Drop Specific Styles */
-        .sortable-ghost { opacity: 0.4; background: #F1F5F9; }
+        .sortable-ghost { opacity: 0.4; background: var(--bg); }
         .drag-handle { touch-action: none; }
+
+        /* Bottom Left Tools Group (Stacked 3 Top, 2 Bottom) */
+        .left-fab-group {
+            position: fixed;
+            bottom: calc(20px + env(safe-area-inset-bottom));
+            left: 20px;
+            display: flex;
+            gap: 12px;
+            z-index: 1000;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            flex-wrap: wrap;
+            width: 174px; /* Exact width to fit 3 items (50x3) + 2 gaps (12x2) */
+            justify-content: center;
+        }
+
+        .left-fab-group.hidden { transform: translateY(100px); opacity: 0; pointer-events: none; }
+
+        .fab-mini {
+            width: 50px;
+            height: 50px;
+            background: var(--surface);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            font-size: 20px;
+            transition: 0.2s;
+            color: var(--text-main);
+        }
+
+        .fab-mini:hover { transform: translateY(-5px) scale(1.05); box-shadow: 0 8px 25px rgba(0,0,0,0.15); }
+        .fab-mini:active { transform: scale(0.9); }
+
+        /* Bottom Right FAB (Add/Deploy) */
+        .fab {
+            position: fixed;
+            bottom: calc(20px + env(safe-area-inset-bottom));
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);
+            border: none;
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .fab svg { width: 28px; height: 28px; transition: all 0.4s ease; }
+        .fab:hover { transform: translateY(-5px) scale(1.05); box-shadow: 0 8px 25px rgba(79, 70, 229, 0.5); }
+        .fab:active { transform: scale(0.9); }
+        
+        .fab.close-mode { background: var(--danger); box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); transform: rotate(135deg); }
+        .fab.close-mode:hover { transform: translateY(-5px) scale(1.05) rotate(135deg); box-shadow: 0 8px 25px rgba(239, 68, 68, 0.5); }
+
+        /* Chart Container */
+        .chart-container {
+            background: var(--surface);
+            padding: 16px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        /* Tag Pill Styling */
+        .tag-pill {
+            display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 6px; 
+            background: rgba(79, 70, 229, 0.1); color: var(--primary); font-size: 11px; 
+            font-weight: 700; margin-right: 6px; margin-top: 6px;
+        }
+        [data-theme="dark"] .tag-pill { background: rgba(99, 102, 241, 0.2); }
+
+        /* GPA/Grade Calculator Card */
+        .gpa-card { background: var(--surface); padding: 12px; border-radius: 14px; border: 1px solid var(--border); margin-bottom: 10px; display: flex; gap: 8px; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .gpa-card input, .gpa-card select { padding: 12px; font-size: 14px; margin: 0; min-width: 0; border-radius: 10px; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <div class="header-info">
-            <h2 onclick="handleTitleClick()">Assignments</h2>
-            <p>Academic Matrix</p>
+        <div class="header-info" style="display: flex; align-items: center; gap: 8px;">
+            <div style="margin-right: auto;">
+                <h2 onclick="handleTitleClick()">Assignments</h2>
+                <p>Academic Matrix</p>
+            </div>
         </div>
         <div id="connectionStatus" class="connection-pill status-cloud">Connecting...</div>
     </div>
@@ -100,22 +197,110 @@
         <div class="dashboard-stats">
             <div class="stat-card"><p class="stat-val" id="stat-total">0</p><p class="stat-label">Pending</p></div>
             <div class="stat-card"><p class="stat-val stat-urgent" id="stat-urgent" style="color:var(--danger);">0</p><p class="stat-label">Due Today</p></div>
-            <div class="stat-card"><p class="stat-val" id="stat-streak" style="color:var(--warning);">0</p><p class="stat-label">Streak 🔥</p></div>
+            <div class="stat-card" onclick="handleStreakClick()" style="cursor: pointer;"><p class="stat-val" id="stat-streak" style="color:var(--warning);">0</p><p class="stat-label">Streak 🔥</p></div>
         </div>
         
+        <div style="display: flex; gap: 10px; margin-bottom: 12px; width: 100%;">
+            <input type="text" id="searchInput" placeholder="Search assignments or #tags..." oninput="buildTaskList()" style="flex: 1; padding: 12px 14px; border-radius: 12px; font-size: 14px;">
+            <button id="focusBtn" onclick="toggleFocusMode()" style="padding: 0 16px; border-radius: 12px; background: var(--surface); color: var(--text-sub); border: 1px solid var(--border); font-weight: 800; font-size: 14px; cursor: pointer; transition: 0.2s; white-space: nowrap;">🎯 Focus</button>
+        </div>
+
         <div style="display: flex; gap: 10px; margin-bottom: 12px; width: 100%; box-sizing: border-box;">
-            <select id="sortMode" onchange="changeSortMode()" style="flex: 1; min-width: 0; padding: 10px; border-radius: 12px; font-size: 13px; font-weight: 800; background: var(--surface); color: var(--text-main); border: 1px solid var(--border); outline: none;">
+            <select id="sortMode" onchange="changeSortMode()" style="flex: 1; min-width: 0; padding: 10px; border-radius: 12px; font-size: 13px; font-weight: 800;">
                 <option value="date">📅 By Date</option>
                 <option value="subject">📚 By Subject</option>
+                <option value="type">🏷️ By Classification</option>
             </select>
-            <select id="secondaryFilter" onchange="changeSecondaryFilter()" style="flex: 1; min-width: 0; padding: 10px; border-radius: 12px; font-size: 13px; font-weight: 800; background: var(--surface); color: var(--text-main); border: 1px solid var(--border); outline: none; text-overflow: ellipsis; white-space: nowrap;">
-                <!-- Dynamically Populated by JS -->
+            <select id="secondaryFilter" onchange="changeSecondaryFilter()" style="flex: 1; min-width: 0; padding: 10px; border-radius: 12px; font-size: 13px; font-weight: 800;">
             </select>
         </div>
         
         <div id="subjectFilters" class="subject-filters" style="margin-bottom: 15px; width: 100%;"></div>
         
         <div id="taskList"></div>
+    </div>
+
+    <!-- WEEKLY STATS VIEW -->
+    <div id="view-stats" class="view-container">
+        <div style="text-align: center; margin-bottom: 24px;">
+            <div style="font-size: 48px; margin-bottom: 10px;">📈</div>
+            <h3 style="margin: 0; font-weight: 800;">Analytics Dashboard</h3>
+            <p style="color: var(--text-sub); font-size: 13px; margin-top: 5px;">Your performance over the last 7 days.</p>
+        </div>
+        
+        <div class="dashboard-stats" style="grid-template-columns: 1fr 1fr 1fr;">
+            <div class="stat-card">
+                <p class="stat-val" id="statsTotal7D" style="color: var(--primary);">0</p>
+                <p class="stat-label">Done (7d)</p>
+            </div>
+            <div class="stat-card">
+                <p class="stat-val" id="statsAvgDay">0</p>
+                <p class="stat-label">Avg/Day</p>
+            </div>
+            <div class="stat-card">
+                <p class="stat-val" id="statsOnTime" style="color: var(--success);">0%</p>
+                <p class="stat-label">On-Time</p>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h4 style="margin: 0 0 15px 0; font-weight: 800; font-size: 14px; color: var(--text-sub); text-transform: uppercase;">Activity History</h4>
+            <canvas id="historyChart" style="max-height: 220px;"></canvas>
+        </div>
+
+        <div class="chart-container">
+            <h4 style="margin: 0 0 15px 0; font-weight: 800; font-size: 14px; color: var(--text-sub); text-transform: uppercase;">Focus Distribution</h4>
+            <canvas id="subjectChart" style="max-height: 220px;"></canvas>
+            <p id="noDataSubject" style="display:none; text-align:center; color: var(--text-sub); font-size: 12px; margin-top: 20px;">No assignments completed recently.</p>
+        </div>
+    </div>
+
+    <!-- GRADE CALCULATOR VIEW (HIERARCHICAL) -->
+    <div id="view-grade" class="view-container">
+        <div style="text-align: center; margin-bottom: 24px;">
+            <div style="font-size: 48px; margin-bottom: 10px;">💯</div>
+            <h3 style="margin: 0; font-weight: 800;">Grade Calculator</h3>
+            <p style="color: var(--text-sub); font-size: 13px; margin-top: 5px;">Track courses, weighted categories & assignments.</p>
+        </div>
+
+        <div id="gradeCourseList"></div>
+
+        <button class="primary-btn" style="background: var(--surface); color: var(--primary); border: 2px dashed var(--primary); margin-top: 15px;" onclick="addGradeCourse()">+ Add Course</button>
+    </div>
+
+    <!-- GPA CALCULATOR VIEW -->
+    <div id="view-gpa" class="view-container">
+        <div style="text-align: center; margin-bottom: 24px;">
+            <div style="font-size: 48px; margin-bottom: 10px;">🎓</div>
+            <h3 style="margin: 0; font-weight: 800;">GPA Calculator</h3>
+            <p style="color: var(--text-sub); font-size: 13px; margin-top: 5px;">Track your live academic standing.</p>
+        </div>
+
+        <div class="stat-card" style="margin-bottom: 20px; padding: 20px;">
+            <p class="stat-val" id="gpaTotalDisplay" style="color: var(--primary); font-size: 42px;">0.00</p>
+            <p class="stat-label">Cumulative GPA</p>
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-bottom: 8px; padding: 0 12px;">
+            <span style="flex: 2; font-size: 11px; font-weight: 700; color: var(--text-sub); text-transform: uppercase;">Course Name</span>
+            <span style="flex: 1; font-size: 11px; font-weight: 700; color: var(--text-sub); text-transform: uppercase; text-align: center;">Credits</span>
+            <span style="flex: 1; font-size: 11px; font-weight: 700; color: var(--text-sub); text-transform: uppercase; text-align: center;">Grade</span>
+            <span style="width: 24px;"></span>
+        </div>
+
+        <div id="gpaCourseList"></div>
+
+        <button class="primary-btn" style="background: var(--surface); color: var(--primary); border: 2px dashed var(--primary); margin-top: 15px;" onclick="addGpaCourse()">+ Add Course</button>
+    </div>
+
+    <!-- RECYCLE BIN VIEW -->
+    <div id="view-bin" class="view-container">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <div style="font-size: 48px; margin-bottom: 10px;">♻️</div>
+            <h3 style="margin: 0; font-weight: 800;">Recycle Bin</h3>
+            <p style="color: var(--text-sub); font-size: 13px; margin-top: 5px;">Tasks are securely held here for 15 days before permanent deletion.</p>
+        </div>
+        <div id="binList"></div>
     </div>
 
     <div id="view-create" class="view-container">
@@ -148,12 +333,23 @@
             <div id="builderList" style="background: var(--surface); border-radius: 14px; border: 1px solid var(--border); display: none; overflow: hidden;"></div>
         </div>
 
+        <!-- NEW: Custom Tags -->
+        <div class="form-group">
+            <label>Custom Tags (Optional)</label>
+            <input type="text" id="taskTags" placeholder="e.g. group-project, extra-credit (comma separated)">
+        </div>
+
+        <div class="form-group">
+            <label>Notes & Links (Optional)</label>
+            <textarea id="taskNotes" rows="3" placeholder="Add syllabus details, Zoom links, or instructions..."></textarea>
+        </div>
+
         <div class="checkbox-container">
             <input type="checkbox" id="taskRecurring" onchange="toggleRecur()">
             <label for="taskRecurring" style="margin:0; text-transform:none; font-size:14px; font-weight:600;">Enable Recurring Cycle</label>
         </div>
         
-        <div id="recurSettings" style="display: none; background: #F8FAFC; padding: 15px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px;">
+        <div id="recurSettings" style="display: none; background: var(--bg); padding: 15px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px;">
             <div class="form-group"><label>Interval</label>
                 <select id="taskInterval">
                     <option value="Weekly">Weekly</option>
@@ -170,12 +366,25 @@
         </div>
 
         <button class="primary-btn" id="deployBtn" onclick="submitToMatrix()">Deploy to Matrix</button>
+        <button class="danger-btn" id="deleteBtn" style="display: none;" onclick="sendToBin()">Delete Task</button>
     </div>
 
-    <div class="bottom-nav">
-        <div class="nav-item active" id="nav-matrix" onclick="switchNavTab('matrix')">📡 Matrix</div>
-        <div class="nav-item" id="nav-create" onclick="switchNavTab('create')">➕ Deploy</div>
+    <!-- Left Floating Tools Group -->
+    <div class="left-fab-group" id="leftTools">
+        <button class="fab-mini" onclick="switchNavTab('stats')" title="Weekly Stats">📊</button>
+        <button class="fab-mini" onclick="switchNavTab('grade')" title="Grade Calculator">💯</button>
+        <button class="fab-mini" onclick="switchNavTab('gpa')" title="GPA Calculator">🎓</button>
+        <button class="fab-mini" onclick="switchNavTab('bin')" title="Recycle Bin">🗑️</button>
+        <button class="fab-mini" onclick="toggleDarkMode()" title="Dark Mode" id="darkModeFab">🌙</button>
     </div>
+
+    <!-- Right Floating Action Button (Add Task) -->
+    <button class="fab" id="mainFab" onclick="toggleView()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+    </button>
 
     <div id="loadingOverlay">Syncing Data...</div>
 
@@ -200,14 +409,28 @@
         let editingTaskId = null;
         let editingTaskOriginal = null;
         let globalTaskData = null;
-        let activeSubjectFilter = 'All';
+        let globalGpaData = {}; 
+        let globalGradeData = {}; // Grade Storage
+        let activeSubjectFilter = 'All'; 
+        let activeTypeFilter = 'All';
         let currentSubtasks = []; 
         let lookaheadDays = parseInt(localStorage.getItem('matrix_lookahead')) || 3;
-        
-        // FIX: Stateful Set to track which cards are currently expanded
         let expandedTasks = new Set();
+        let globalStreak = { current: 0, lastDate: '' }; 
+        let currentView = 'matrix';
         
+        let focusMode = false;
+        let isDarkMode = localStorage.getItem('matrix_dark_mode') === 'true';
+
+        const subjectColors = ['#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
+        
+        // Chart Objects
+        let historyChart = null;
+        let subjectChart = null;
+
         document.addEventListener('DOMContentLoaded', () => {
+            applyDarkMode(); 
+
             const sortEl = document.getElementById('sortMode');
             if(sortEl) {
                 const savedSort = localStorage.getItem('matrix_sort') || 'date';
@@ -231,19 +454,85 @@
             }
         });
 
+        // Theme Handling
+        function toggleDarkMode() {
+            isDarkMode = !isDarkMode;
+            localStorage.setItem('matrix_dark_mode', isDarkMode);
+            applyDarkMode();
+        }
+
+        function applyDarkMode() {
+            if (isDarkMode) {
+                document.body.setAttribute('data-theme', 'dark');
+                document.getElementById('darkModeFab').innerText = '☀️';
+            } else {
+                document.body.removeAttribute('data-theme');
+                document.getElementById('darkModeFab').innerText = '🌙';
+            }
+            if (currentView === 'stats') buildStatsView();
+        }
+
+        function getSubjectColor(str) {
+            if (!str || str === 'Uncategorized') return 'var(--text-sub)';
+            let hash = 0;
+            for(let i=0; i<str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            return subjectColors[Math.abs(hash) % subjectColors.length];
+        }
+
+        function toggleFocusMode() {
+            focusMode = !focusMode;
+            const btn = document.getElementById('focusBtn');
+            if (focusMode) {
+                btn.style.background = 'var(--primary)';
+                btn.style.color = 'white';
+                btn.style.borderColor = 'var(--primary)';
+            } else {
+                btn.style.background = 'var(--surface)';
+                btn.style.color = 'var(--text-sub)';
+                btn.style.borderColor = 'var(--border)';
+            }
+            buildTaskList();
+        }
+
+        function toggleView() {
+            if (currentView === 'matrix') switchNavTab('create');
+            else switchNavTab('matrix');
+        }
+
+        let streakClickCount = 0, streakClickTimer = null;
+        function handleStreakClick() {
+            streakClickCount++;
+            clearTimeout(streakClickTimer);
+            if (streakClickCount >= 3) {
+                if(confirm("Are you sure you want to reset your streak to 0?")) {
+                    if (DATABASE_ID) {
+                        database.ref(DATABASE_ID + '/streak').update({ current: 0, lastDate: '' });
+                        globalStreak = { current: 0, lastDate: '' };
+                        document.getElementById('stat-streak').innerText = "0";
+                        document.getElementById('stat-streak').style.color = "var(--warning)";
+                    }
+                }
+                streakClickCount = 0;
+            }
+            streakClickTimer = setTimeout(() => { streakClickCount = 0; }, 500);
+        }
+
         function changeSecondaryFilter() {
             let mode = document.getElementById('sortMode').value;
             let val = document.getElementById('secondaryFilter').value;
+            
             if (mode === 'date') {
                 lookaheadDays = parseInt(val);
                 localStorage.setItem('matrix_lookahead', lookaheadDays);
-            } else {
+            } else if (mode === 'subject') {
                 activeSubjectFilter = val;
+            } else if (mode === 'type') {
+                activeTypeFilter = val;
             }
             if (globalTaskData) buildTaskList();
         }
 
-        function populateSecondaryFilter(subjects) {
+        function populateSecondaryFilter(optionsList) {
             const sortMode = document.getElementById('sortMode') ? document.getElementById('sortMode').value : 'date';
             const filterEl = document.getElementById('secondaryFilter');
             if (!filterEl) return;
@@ -254,11 +543,17 @@
                     let selected = (d == lookaheadDays) ? 'selected' : '';
                     html += `<option value="${d}" ${selected}>${d} Day${d > 1 ? 's' : ''}</option>`;
                 });
-            } else {
-                subjects.forEach(s => {
+            } else if (sortMode === 'subject') {
+                optionsList.forEach(s => {
                     let selected = (s === activeSubjectFilter) ? 'selected' : '';
                     let displayLabel = s === 'All' ? 'All Subjects' : s;
                     html += `<option value="${s.replace(/'/g, "\\'")}" ${selected}>${displayLabel}</option>`;
+                });
+            } else if (sortMode === 'type') {
+                optionsList.forEach(t => {
+                    let selected = (t === activeTypeFilter) ? 'selected' : '';
+                    let displayLabel = t === 'All' ? 'All Classifications' : t;
+                    html += `<option value="${t.replace(/'/g, "\\'")}" ${selected}>${displayLabel}</option>`;
                 });
             }
             filterEl.innerHTML = html;
@@ -299,23 +594,25 @@
                     DATABASE_ID = vaultPointer;
                     document.getElementById('connectionStatus').innerText = "Cloud Sync Active";
                     document.getElementById('connectionStatus').className = "connection-pill status-cloud";
+                    
                     startTaskListener();
 
                     database.ref(DATABASE_ID + '/streak').on('value', sSnap => {
-                        const s = sSnap.val() || { current: 0, lastDate: '' };
-                        let now = new Date();
-                        let todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
-                        let yesterday = new Date(now);
-                        yesterday.setDate(yesterday.getDate() - 1);
-                        let yestStr = yesterday.getFullYear() + '-' + String(yesterday.getMonth()+1).padStart(2,'0') + '-' + String(yesterday.getDate()).padStart(2,'0');
-
-                        if (s.lastDate && s.lastDate !== todayStr && s.lastDate !== yestStr) {
-                            document.getElementById('stat-streak').innerText = "0";
-                        } else {
-                            document.getElementById('stat-streak').innerText = s.current;
-                        }
+                        globalStreak = sSnap.val() || { current: 0, lastDate: '' };
+                        if (globalTaskData) buildTaskList();
                     });
 
+                    // Load GPA Data
+                    database.ref(DATABASE_ID + '/gpa').on('value', snap => {
+                        globalGpaData = snap.val() || {};
+                        if (currentView === 'gpa') renderGpaView();
+                    });
+
+                    // Load Hierarchical Grade Data
+                    database.ref(DATABASE_ID + '/grades').on('value', snap => {
+                        globalGradeData = snap.val() || {};
+                        if (currentView === 'grade') renderGradeView();
+                    });
                 } else {
                     alert("Password Incorrect or Changed. Access Denied.");
                     localStorage.removeItem('matrix_api_key');
@@ -341,7 +638,344 @@
 
         function renderTasks(data) {
             globalTaskData = data;
+            cleanupBin(); 
             buildTaskList();
+            if (currentView === 'bin') buildBinList();
+            if (currentView === 'stats') buildStatsView();
+        }
+
+        function cleanupBin() {
+            if (!globalTaskData || !DATABASE_ID) return;
+            const now = Date.now();
+            const FIFTEEN_DAYS = 15 * 24 * 60 * 60 * 1000;
+            
+            let updates = {};
+            let hasUpdates = false;
+
+            Object.keys(globalTaskData).forEach(k => {
+                let t = globalTaskData[k];
+                if (t.pending_completion) {
+                    if (t.bin_timestamp) {
+                        if (now - t.bin_timestamp > FIFTEEN_DAYS) {
+                            updates[k] = null; 
+                            hasUpdates = true;
+                        }
+                    } else {
+                        updates[k + '/bin_timestamp'] = now; 
+                        hasUpdates = true;
+                    }
+                }
+            });
+            if (hasUpdates) database.ref(DATABASE_ID + '/tasks').update(updates);
+        }
+
+        // --- GRADE CALCULATOR LOGIC (HIERARCHICAL) ---
+        function renderGradeView() {
+            const list = document.getElementById('gradeCourseList');
+            let html = '';
+
+            Object.keys(globalGradeData).forEach(courseId => {
+                let course = globalGradeData[courseId];
+                let courseTotalWeight = 0;
+                let courseEarnedPoints = 0;
+
+                let categoriesHtml = '';
+
+                if (course.categories) {
+                    Object.keys(course.categories).forEach(catId => {
+                        let cat = course.categories[catId];
+                        let catWeight = parseFloat(cat.weight) || 0;
+                        courseTotalWeight += catWeight;
+
+                        let catEarned = 0;
+                        let catTotal = 0;
+                        let activitiesHtml = '';
+
+                        if (cat.activities) {
+                            Object.keys(cat.activities).forEach(actId => {
+                                let act = cat.activities[actId];
+                                let e = parseFloat(act.earned);
+                                let t = parseFloat(act.total);
+                                if(!isNaN(e)) catEarned += e;
+                                if(!isNaN(t)) catTotal += t;
+
+                                activitiesHtml += `
+                                    <div style="display:flex; gap:8px; margin-bottom:8px; align-items:center;">
+                                        <input type="number" placeholder="Earned" value="${act.earned!==undefined?act.earned:''}" onchange="updateGradeActivity('${courseId}', '${catId}', '${actId}', 'earned', this.value)" style="padding:6px; font-size:13px; border-radius:8px; flex:1; text-align:center; min-width:0;">
+                                        <span style="color:var(--text-sub); font-weight:800; font-size: 14px;">/</span>
+                                        <input type="number" placeholder="Total" value="${act.total!==undefined?act.total:''}" onchange="updateGradeActivity('${courseId}', '${catId}', '${actId}', 'total', this.value)" style="padding:6px; font-size:13px; border-radius:8px; flex:1; text-align:center; min-width:0;">
+                                        <button onclick="removeGradeActivity('${courseId}', '${catId}', '${actId}')" style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:16px;">✕</button>
+                                    </div>
+                                `;
+                            });
+                        }
+
+                        let catScorePct = catTotal > 0 ? (catEarned / catTotal) : 0;
+                        courseEarnedPoints += (catScorePct * catWeight);
+
+                        let catDisplayScore = catTotal > 0 ? (catScorePct * 100).toFixed(1) + '%' : '0%';
+
+                        categoriesHtml += `
+                            <div style="background:var(--bg); padding:12px; border-radius:12px; margin-bottom:12px; border: 1px solid var(--border);">
+                                <div style="display:flex; gap:8px; margin-bottom:12px; align-items:center;">
+                                    <input type="text" placeholder="Category (e.g. Exams)" value="${cat.name||''}" onchange="updateGradeCategory('${courseId}', '${catId}', 'name', this.value)" style="flex:2; padding:8px; font-size:13px; min-width:0;">
+                                    <input type="number" placeholder="Weight %" value="${cat.weight||''}" onchange="updateGradeCategory('${courseId}', '${catId}', 'weight', this.value)" style="flex:1; padding:8px; font-size:13px; text-align:center; min-width:0;">
+                                    <span style="font-size:13px; font-weight:800; color:var(--primary); min-width:45px; text-align:right;">${catDisplayScore}</span>
+                                    <button onclick="removeGradeCategory('${courseId}', '${catId}')" style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:16px; margin-left:4px;">✕</button>
+                                </div>
+                                <div style="padding-left:12px; border-left:2px solid var(--primary); margin-left: 4px;">
+                                    ${activitiesHtml}
+                                    <button onclick="addGradeActivity('${courseId}', '${catId}')" style="background:none; border:none; color:var(--primary); font-size:12px; font-weight:800; cursor:pointer; margin-top:2px; padding:4px 0;">+ Add Assignment Score (e.g. 2 / 10)</button>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+
+                let courseStanding = courseTotalWeight > 0 ? ((courseEarnedPoints / courseTotalWeight) * 100).toFixed(2) : '0.00';
+
+                html += `
+                    <div class="stat-card" style="margin-bottom: 20px; text-align: left; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                            <input type="text" placeholder="Course Name (e.g. Math 101)" value="${course.name||''}" onchange="updateGradeCourse('${courseId}', 'name', this.value)" style="font-size: 18px; font-weight: 800; padding:4px 8px; border:none; border-bottom:2px solid var(--primary); border-radius:0; background:transparent; width:55%; color:var(--text-main);">
+                            <div style="text-align:right; margin-right: 8px;">
+                                <span style="font-size: 24px; font-weight: 800; color: var(--primary);">${courseStanding}%</span>
+                                <div style="font-size:10px; color:var(--text-sub); text-transform:uppercase; font-weight:700;">Current Grade</div>
+                            </div>
+                            <button onclick="removeGradeCourse('${courseId}')" style="background:var(--danger); border:none; color:white; cursor:pointer; font-size:12px; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center;">✕</button>
+                        </div>
+                        ${categoriesHtml}
+                        <button class="primary-btn" style="background: var(--surface); color: var(--text-main); border: 1px dashed var(--border); padding:12px; font-size:13px; margin-top:4px;" onclick="addGradeCategory('${courseId}')">+ Add Category (e.g. Homework 25%)</button>
+                    </div>
+                `;
+            });
+
+            if (Object.keys(globalGradeData).length === 0) {
+                html = '<p style="text-align:center; color:var(--text-sub); margin-top:20px;">No courses added. Tap below to start calculating your grades.</p>';
+            }
+
+            list.innerHTML = html;
+        }
+
+        function addGradeCourse() {
+            if (!DATABASE_ID) return;
+            database.ref(DATABASE_ID + '/grades/' + Date.now()).set({ name: '' });
+        }
+
+        function updateGradeCourse(cId, field, val) {
+            if (!DATABASE_ID) return;
+            database.ref(DATABASE_ID + '/grades/' + cId + '/' + field).set(val);
+        }
+
+        function removeGradeCourse(cId) {
+            if (!DATABASE_ID) return;
+            if(confirm("Remove this entire course and all its grades?")) {
+                database.ref(DATABASE_ID + '/grades/' + cId).remove();
+            }
+        }
+
+        function addGradeCategory(cId) {
+            if (!DATABASE_ID) return;
+            database.ref(DATABASE_ID + '/grades/' + cId + '/categories/' + Date.now()).set({ name: '', weight: '' });
+        }
+
+        function updateGradeCategory(cId, catId, field, val) {
+            if (!DATABASE_ID) return;
+            database.ref(DATABASE_ID + '/grades/' + cId + '/categories/' + catId + '/' + field).set(val);
+        }
+
+        function removeGradeCategory(cId, catId) {
+            if (!DATABASE_ID) return;
+            if(confirm("Remove this category?")) {
+                database.ref(DATABASE_ID + '/grades/' + cId + '/categories/' + catId).remove();
+            }
+        }
+
+        function addGradeActivity(cId, catId) {
+            if (!DATABASE_ID) return;
+            database.ref(DATABASE_ID + '/grades/' + cId + '/categories/' + catId + '/activities/' + Date.now()).set({ earned: '', total: '' });
+        }
+
+        function updateGradeActivity(cId, catId, actId, field, val) {
+            if (!DATABASE_ID) return;
+            database.ref(DATABASE_ID + '/grades/' + cId + '/categories/' + catId + '/activities/' + actId + '/' + field).set(val);
+        }
+
+        function removeGradeActivity(cId, catId, actId) {
+            if (!DATABASE_ID) return;
+            database.ref(DATABASE_ID + '/grades/' + cId + '/categories/' + catId + '/activities/' + actId).remove();
+        }
+        // --- END GRADE CALCULATOR LOGIC ---
+
+        // --- GPA LOGIC ---
+        function renderGpaView() {
+            const list = document.getElementById('gpaCourseList');
+            let html = '';
+            let totalCredits = 0;
+            let totalPoints = 0;
+            
+            const gradeValues = { 'A+': 4.0, 'A': 4.0, 'A-': 3.7, 'B+': 3.3, 'B': 3.0, 'B-': 2.7, 'C+': 2.3, 'C': 2.0, 'C-': 1.7, 'D+': 1.3, 'D': 1.0, 'F': 0.0 };
+
+            Object.keys(globalGpaData).forEach(k => {
+                let course = globalGpaData[k];
+                let creds = parseFloat(course.credits) || 0;
+                if (course.grade && gradeValues[course.grade] !== undefined) {
+                    totalCredits += creds;
+                    totalPoints += (creds * gradeValues[course.grade]);
+                }
+
+                html += `
+                <div class="gpa-card">
+                    <input type="text" value="${course.name || ''}" placeholder="Course Name" onchange="updateGpaCourse('${k}', 'name', this.value)" style="flex: 2; text-align: left;">
+                    <input type="number" value="${course.credits || ''}" placeholder="Cr." onchange="updateGpaCourse('${k}', 'credits', this.value)" style="flex: 1; text-align: center;">
+                    <select onchange="updateGpaCourse('${k}', 'grade', this.value)" style="flex: 1;">
+                        <option value="">--</option>
+                        ${Object.keys(gradeValues).map(g => `<option value="${g}" ${course.grade === g ? 'selected' : ''}>${g}</option>`).join('')}
+                    </select>
+                    <button onclick="removeGpaCourse('${k}')" style="background: none; border: none; color: var(--danger); font-size: 18px; cursor: pointer; padding: 0 4px; margin-left: 4px;">✕</button>
+                </div>`;
+            });
+            
+            if (Object.keys(globalGpaData).length === 0) {
+                html = '<p style="text-align:center; color:var(--text-sub); margin-top:20px;">No courses added yet. Tap below to start calculating your GPA.</p>';
+            }
+
+            list.innerHTML = html;
+
+            let finalGpa = totalCredits > 0 ? (totalPoints / totalCredits).toFixed(2) : '0.00';
+            document.getElementById('gpaTotalDisplay').innerText = finalGpa;
+        }
+
+        function addGpaCourse() {
+            if (!DATABASE_ID) return;
+            database.ref(DATABASE_ID + '/gpa/' + Date.now()).set({ name: '', credits: 3, grade: '' });
+        }
+
+        function updateGpaCourse(id, field, value) {
+            if (!DATABASE_ID) return;
+            database.ref(DATABASE_ID + '/gpa/' + id + '/' + field).set(value);
+        }
+
+        function removeGpaCourse(id) {
+            if (!DATABASE_ID) return;
+            if(confirm("Remove this course from your GPA?")) {
+                database.ref(DATABASE_ID + '/gpa/' + id).remove();
+            }
+        }
+        // --- END GPA LOGIC ---
+
+        function buildStatsView() {
+            if (!globalTaskData) return;
+
+            const textColor = isDarkMode ? '#94A3B8' : '#64748B';
+            const gridColor = isDarkMode ? '#334155' : '#E2E8F0';
+            const surfaceColor = isDarkMode ? '#1E293B' : '#FFFFFF';
+
+            let now = Date.now();
+            const daysArr = [];
+            const completionData = [0, 0, 0, 0, 0, 0, 0];
+            let subjectDistribution = {};
+            let total7D = 0;
+            let onTimeCount = 0;
+            let totalAnalyzed = 0; 
+
+            for (let i = 6; i >= 0; i--) {
+                let d = new Date(now - (i * 86400000));
+                daysArr.push(d.toLocaleDateString('en-US', { weekday: 'short' }));
+            }
+
+            Object.values(globalTaskData).forEach(t => {
+                if (t.pending_completion && t.bin_timestamp) {
+                    let diffDays = Math.floor((now - t.bin_timestamp) / 86400000);
+                    
+                    if (diffDays >= 0 && diffDays < 7) {
+                        let dayIndex = 6 - diffDays;
+                        completionData[dayIndex]++;
+                        total7D++;
+
+                        let sub = t.subject || 'Other';
+                        subjectDistribution[sub] = (subjectDistribution[sub] || 0) + 1;
+
+                        if (t.due) {
+                            totalAnalyzed++;
+                            let dueTime = new Date(t.due).getTime();
+                            if (t.bin_timestamp <= dueTime) onTimeCount++;
+                        }
+                    }
+                }
+            });
+
+            document.getElementById('statsTotal7D').innerText = total7D;
+            document.getElementById('statsAvgDay').innerText = (total7D / 7).toFixed(1);
+            
+            let onTimePct = totalAnalyzed > 0 ? Math.round((onTimeCount / totalAnalyzed) * 100) : 100;
+            const onTimeEl = document.getElementById('statsOnTime');
+            onTimeEl.innerText = onTimePct + '%';
+            onTimeEl.style.color = onTimePct >= 80 ? 'var(--success)' : (onTimePct >= 50 ? 'var(--warning)' : 'var(--danger)');
+
+            if (historyChart) historyChart.destroy();
+            const ctxHist = document.getElementById('historyChart').getContext('2d');
+            
+            historyChart = new Chart(ctxHist, {
+                type: 'bar',
+                data: {
+                    labels: daysArr,
+                    datasets: [{
+                        label: 'Tasks Completed',
+                        data: completionData,
+                        backgroundColor: 'rgba(79, 70, 229, 0.85)',
+                        borderRadius: 6,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, ticks: { color: textColor, stepSize: 1 }, grid: { color: gridColor, drawBorder: false } },
+                        x: { ticks: { color: textColor }, grid: { display: false, drawBorder: false } }
+                    },
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: { backgroundColor: surfaceColor, titleColor: textColor, bodyColor: textColor, borderColor: gridColor, borderWidth: 1 }
+                    }
+                }
+            });
+
+            if (subjectChart) subjectChart.destroy();
+            
+            const subLabels = Object.keys(subjectDistribution);
+            const noDataEl = document.getElementById('noDataSubject');
+            const canvasSubj = document.getElementById('subjectChart');
+
+            if (subLabels.length === 0) {
+                canvasSubj.style.display = 'none';
+                noDataEl.style.display = 'block';
+            } else {
+                canvasSubj.style.display = 'block';
+                noDataEl.style.display = 'none';
+
+                const subData = subLabels.map(k => subjectDistribution[k]);
+                const subColors = subLabels.map(k => getSubjectColor(k));
+
+                const ctxSubj = canvasSubj.getContext('2d');
+                subjectChart = new Chart(ctxSubj, {
+                    type: 'doughnut',
+                    data: {
+                        labels: subLabels,
+                        datasets: [{ data: subData, backgroundColor: subColors, borderWidth: 2, borderColor: surfaceColor, hoverOffset: 4 }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '70%',
+                        plugins: {
+                            legend: { position: 'right', labels: { color: textColor, font: { size: 11, family: 'Inter' }, usePointStyle: true, boxWidth: 8 } },
+                            tooltip: { backgroundColor: surfaceColor, titleColor: textColor, bodyColor: textColor, borderColor: gridColor, borderWidth: 1 }
+                        }
+                    }
+                });
+            }
         }
 
         function addSubtaskFromForm() {
@@ -359,7 +993,6 @@
             renderBuilderList();
         }
 
-        // FIX: Added flex wrapping and min-width rules here to prevent the builder list from stretching out of bounds
         function renderBuilderList() {
             const list = document.getElementById('builderList');
             if(currentSubtasks.length === 0) {
@@ -384,24 +1017,76 @@
             database.ref(DATABASE_ID + '/tasks/' + taskId + '/subtasks/' + subtaskIdx).update({ done: isDone });
         }
         
-        // FIX: The toggle handler that collapses or expands the subtasks
         function toggleSubtaskView(taskId, event) {
             if (event) {
-                event.stopPropagation(); // Prevents it from accidentally opening the edit window
+                event.stopPropagation();
                 event.preventDefault();
             }
             const subContainer = document.getElementById('subtasks-' + taskId);
+            const notesContainer = document.getElementById('notes-' + taskId);
             const toggleIcon = document.getElementById('toggle-icon-' + taskId);
             
+            let isNowExpanded = false;
             if (expandedTasks.has(taskId)) {
                 expandedTasks.delete(taskId);
-                subContainer.style.display = 'none';
-                toggleIcon.innerText = toggleIcon.innerText.replace('▼', '▶');
             } else {
                 expandedTasks.add(taskId);
-                subContainer.style.display = 'block';
-                toggleIcon.innerText = toggleIcon.innerText.replace('▶', '▼');
+                isNowExpanded = true;
             }
+
+            if (subContainer) subContainer.style.display = isNowExpanded ? 'block' : 'none';
+            if (notesContainer) notesContainer.style.display = isNowExpanded ? 'block' : 'none';
+            if (toggleIcon) {
+                toggleIcon.innerText = isNowExpanded ? toggleIcon.innerText.replace('▶', '▼') : toggleIcon.innerText.replace('▼', '▶');
+            }
+        }
+
+        function buildBinList() {
+            const list = document.getElementById('binList');
+            if (!globalTaskData) {
+                list.innerHTML = '<p style="text-align:center; color:var(--text-sub);">Bin is empty.</p>';
+                return;
+            }
+            
+            let binTasks = Object.keys(globalTaskData)
+                .map(k => ({id: k, ...globalTaskData[k]}))
+                .filter(t => t.pending_completion);
+            
+            if (binTasks.length === 0) {
+                list.innerHTML = '<p style="text-align:center; color:var(--text-sub); margin-top: 40px; font-weight: 600;">Bin is entirely empty.</p>';
+                return;
+            }
+            
+            binTasks.sort((a, b) => (b.bin_timestamp || 0) - (a.bin_timestamp || 0));
+            
+            let html = '';
+            binTasks.forEach(t => {
+                let icon = {Assignment:"📄",Quiz:"🧠",Exam:"🎯","Lab Report":"🔬",Study:"📚"}[t.type] || "📄";
+                let daysLeft = 15 - Math.floor((Date.now() - (t.bin_timestamp || Date.now())) / (1000 * 60 * 60 * 24));
+                if(daysLeft < 0) daysLeft = 0;
+
+                html += `<div class="task-wrapper" style="opacity: 0.8; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; min-width: 0;">
+                        <div class="task-icon">${icon}</div>
+                        <div class="task-info">
+                            <p class="task-title" style="text-decoration: line-through; margin: 0; font-size: 14px;">${t.title}</p>
+                            <p class="task-sub" style="margin: 0; font-size: 11px;">Permanently deletes in ${daysLeft} days</p>
+                        </div>
+                    </div>
+                    <button onclick="recoverTask('${t.id}')" style="background: var(--success); color: white; border: none; padding: 10px 14px; border-radius: 10px; font-weight: 800; cursor: pointer; transition: 0.2s; font-size: 12px; flex-shrink: 0; margin-left: 10px;">Recover</button>
+                </div>`;
+            });
+            list.innerHTML = html;
+        }
+
+        async function recoverTask(taskId) {
+            if (!DATABASE_ID) return;
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            await database.ref(DATABASE_ID + '/tasks/' + taskId).update({ 
+                pending_completion: false,
+                bin_timestamp: null
+            });
+            document.getElementById('loadingOverlay').style.display = 'none';
         }
 
         function buildTaskList() {
@@ -410,10 +1095,28 @@
             const sortMode = document.getElementById('sortMode') ? document.getElementById('sortMode').value : 'date';
             const data = globalTaskData;
 
+            const emptyStateFullHTML = `
+                <div style="text-align:center; margin-top: 60px; padding: 20px; animation: fadeUp 0.5s ease;">
+                    <div style="font-size: 72px; margin-bottom: 16px;">🏝️</div>
+                    <h3 style="margin: 0; color: var(--text-main); font-weight: 800; font-size: 20px;">You're all caught up!</h3>
+                    <p style="color: var(--text-sub); font-size: 14px; margin-top: 8px; line-height: 1.5;">Zero assignments due.<br>Take a breath and enjoy your day!</p>
+                </div>
+            `;
+
+            const emptyStateFilterHTML = `
+                <div style="text-align:center; margin-top: 60px; padding: 20px; animation: fadeUp 0.5s ease;">
+                    <div style="font-size: 64px; margin-bottom: 16px;">📭</div>
+                    <h3 style="margin: 0; color: var(--text-main); font-weight: 800; font-size: 18px;">Nothing here!</h3>
+                    <p style="color: var(--text-sub); font-size: 14px; margin-top: 8px;">No assignments match this filter.</p>
+                </div>
+            `;
+
             if (!data) { 
-                list.innerHTML = '<p style="text-align:center; color:#888; margin-top:40px;">No assignments pending.</p>'; 
+                list.innerHTML = emptyStateFullHTML; 
                 document.getElementById('stat-total').innerText = "0"; 
                 document.getElementById('stat-urgent').innerText = "0"; 
+                document.getElementById('stat-streak').innerText = globalStreak.current || 0;
+                document.getElementById('stat-streak').style.color = "var(--warning)";
                 filterContainer.innerHTML = '';
                 populateSecondaryFilter(['All']);
                 return; 
@@ -421,54 +1124,96 @@
             
             let allTasks = Object.keys(data)
                 .map(k => ({id: k, ...data[k]}))
-                .filter(t => !t.pending_completion) 
-                .sort((a,b) => new Date(a.due) - new Date(b.due));
-            
-            let subjects = ['All', ...new Set(allTasks.map(t => t.subject).filter(Boolean))];
-            
-            if (!subjects.includes(activeSubjectFilter)) activeSubjectFilter = 'All';
+                .filter(t => !t.pending_completion);
 
-            populateSecondaryFilter(subjects);
-
-            filterContainer.innerHTML = subjects.map(s => 
-                `<div class="subject-pill ${s === activeSubjectFilter ? 'active' : ''}" onclick="filterBySubject('${s.replace(/'/g, "\\'")}')">${s}</div>`
-            ).join('');
-            
-            filterContainer.style.display = (sortMode === 'subject') ? 'none' : 'flex';
-
-            let overdueOrTodayCount = 0;
+            // Filter Focus Mode
             let now = new Date();
             let todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
             let lookaheadEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + lookaheadDays, 23, 59, 59);
 
-            allTasks.forEach(t => {
+            if (focusMode) {
+                allTasks = allTasks.filter(t => new Date(t.due) <= todayEnd || t.priority === 'Critical');
+            }
+
+            // Filter Search Query (NOW INCLUDES TAGS)
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput && searchInput.value.trim() !== '') {
+                const q = searchInput.value.toLowerCase().trim();
+                allTasks = allTasks.filter(t => 
+                    (t.title && t.title.toLowerCase().includes(q)) || 
+                    (t.subject && t.subject.toLowerCase().includes(q)) ||
+                    (t.notes && t.notes.toLowerCase().includes(q)) ||
+                    (t.tags && t.tags.some(tag => tag.toLowerCase().includes(q)))
+                );
+            }
+                
+            allTasks.sort((a,b) => new Date(a.due) - new Date(b.due));
+            
+            let subjects = ['All', ...new Set(allTasks.map(t => t.subject).filter(Boolean))];
+            let types = ['All', ...new Set(allTasks.map(t => t.type).filter(Boolean))];
+
+            if (!subjects.includes(activeSubjectFilter)) activeSubjectFilter = 'All';
+            if (!types.includes(activeTypeFilter)) activeTypeFilter = 'All';
+
+            if (sortMode === 'subject') populateSecondaryFilter(subjects);
+            else if (sortMode === 'type') populateSecondaryFilter(types);
+            else populateSecondaryFilter([]); 
+
+            // Color Coded Pills
+            filterContainer.innerHTML = subjects.map(s => 
+                `<div class="subject-pill ${s === activeSubjectFilter ? 'active' : ''}" onclick="filterBySubject('${s.replace(/'/g, "\\'")}')">
+                    ${s !== 'All' ? `<span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${getSubjectColor(s)}; margin-right:6px;"></span>` : ''}${s}
+                </div>`
+            ).join('');
+            
+            filterContainer.style.display = (sortMode === 'date') ? 'flex' : 'none';
+
+            let overdueOrTodayCount = 0;
+            let overdueCount = 0;
+            
+            // Re-map for original stat count logic (not affected by search/focus)
+            let baseTasks = Object.keys(data).map(k => ({id: k, ...data[k]})).filter(t => !t.pending_completion);
+            baseTasks.forEach(t => {
                 let d = new Date(t.due);
+                if (d < now) overdueCount++;
                 if (d <= todayEnd) overdueOrTodayCount++;
             });
-            document.getElementById('stat-total').innerText = allTasks.length;
+            document.getElementById('stat-total').innerText = baseTasks.length;
             document.getElementById('stat-urgent').innerText = overdueOrTodayCount;
 
-            let filteredTasks = activeSubjectFilter === 'All' ? allTasks : allTasks.filter(t => t.subject === activeSubjectFilter);
+            if (overdueCount > 0) {
+                document.getElementById('stat-streak').innerText = "0";
+                document.getElementById('stat-streak').style.color = "var(--danger)";
+            } else {
+                document.getElementById('stat-streak').innerText = globalStreak.current || 0;
+                document.getElementById('stat-streak').style.color = "var(--warning)";
+            }
+
+            let filteredTasks = allTasks;
+            if (sortMode === 'subject' && activeSubjectFilter !== 'All') {
+                filteredTasks = allTasks.filter(t => t.subject === activeSubjectFilter);
+            } else if (sortMode === 'type' && activeTypeFilter !== 'All') {
+                filteredTasks = allTasks.filter(t => t.type === activeTypeFilter);
+            }
 
             if (filteredTasks.length === 0) {
-                list.innerHTML = '<p style="text-align:center; color:#888; margin-top:40px;">No assignments pending for this filter.</p>';
+                if (baseTasks.length > 0) list.innerHTML = emptyStateFilterHTML;
+                else list.innerHTML = emptyStateFullHTML;
                 return;
             }
 
             let groups = {};
             
-            if (sortMode === 'subject') {
+            if (sortMode === 'subject' || sortMode === 'type') {
                 filteredTasks.forEach(t => {
-                    let sub = t.subject || 'Uncategorized';
-                    if (!groups[sub]) groups[sub] = [];
-                    groups[sub].push(t);
+                    let key = (sortMode === 'subject' ? t.subject : t.type) || 'Uncategorized';
+                    if (!groups[key]) groups[key] = [];
+                    groups[key].push(t);
                 });
-                
                 let sortedKeys = Object.keys(groups).sort();
                 let newGroups = {};
                 sortedKeys.forEach(k => newGroups[k] = groups[k]);
                 groups = newGroups;
-                
             } else {
                 groups = {
                     'Overdue': [],
@@ -476,7 +1221,6 @@
                     [`Due in ${lookaheadDays} Days`]: [],
                     'Upcoming': []
                 };
-
                 filteredTasks.forEach(t => {
                     let d = new Date(t.due);
                     if (d < now) groups['Overdue'].push(t);
@@ -500,14 +1244,25 @@
                         const dateStr = d.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'});
                         const timeStr = d.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'});
                         
-                        // Check if the current user left this task expanded before the render sync
                         let isExpanded = expandedTasks.has(t.id);
                         let displayStyle = isExpanded ? 'block' : 'none';
                         let iconChar = isExpanded ? '▼' : '▶';
                         
-                        // HEIGHT FIXES: Adjusted padding-top and margin-top of the subtask dashed divider and the checkbox items below
                         let subHtml = '';
+                        let progressHtml = '';
+                        let customTagsHtml = '';
+                        
+                        // Render Subtasks
                         if(t.subtasks && t.subtasks.length > 0) {
+                            let doneCount = t.subtasks.filter(s => s.done).length;
+                            let pct = Math.round((doneCount / t.subtasks.length) * 100);
+                            
+                            progressHtml = `
+                                <div style="width: 100%; max-width: 140px; height: 6px; background: var(--border); border-radius: 3px; margin-top: 6px; overflow: hidden;">
+                                    <div style="width: ${pct}%; height: 100%; background: var(--primary); transition: width 0.3s;"></div>
+                                </div>
+                            `;
+
                             subHtml = `<div id="subtasks-${t.id}" style="display: ${displayStyle}; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border); margin-left: 38px;">` + 
                                 t.subtasks.map((st, idx) => `
                                     <div style="display: flex; align-items: flex-start; margin-bottom: 6px;">
@@ -517,6 +1272,23 @@
                                 `).join('') + `</div>`;
                         }
 
+                        // Render Tags
+                        if (t.tags && t.tags.length > 0) {
+                            customTagsHtml = `<div style="margin-top: 4px;">` + t.tags.map(tag => `<span class="tag-pill">#${tag}</span>`).join('') + `</div>`;
+                        }
+
+                        let notesHtml = '';
+                        if (t.notes) {
+                            let safeNotes = t.notes.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                            notesHtml = `<div id="notes-${t.id}" style="display: ${displayStyle}; margin-top: 8px; padding: 12px; background: var(--bg); border-radius: 8px; font-size: 12px; color: var(--text-sub); white-space: pre-wrap; margin-left: 38px;">${safeNotes}</div>`;
+                        }
+
+                        let hasExpandable = (t.subtasks && t.subtasks.length > 0) || t.notes;
+                        let expandLabel = [];
+                        if (t.subtasks && t.subtasks.length > 0) expandLabel.push(`${t.subtasks.length} Subtasks`);
+                        if (t.notes) expandLabel.push(`Notes`);
+                        let expandText = expandLabel.join(' & ');
+
                         html += `<div class="task-wrapper card-accent-${acc}" style="flex-direction: column; align-items: stretch;">
                             <div style="display: flex; align-items: center; width: 100%;">
                                 <div class="check-circle" onclick="completeTask('${t.id}', this)"></div>
@@ -524,17 +1296,20 @@
                                 <div class="task-info">
                                     <div onclick='openEditMode(${JSON.stringify(t).replace(/'/g, "&#39;")})' style="cursor: pointer;">
                                         <p class="task-title">${t.title}</p>
-                                        <p class="task-sub">${t.type} • ${t.subject} ${t.recurring ? '🔄' : ''}</p>
+                                        <p class="task-sub">${t.type} • <span style="color:${getSubjectColor(t.subject)}; font-weight: 700;">${t.subject}</span> ${t.recurring ? '🔄' : ''}</p>
+                                        ${customTagsHtml}
                                     </div>
-                                    ${t.subtasks && t.subtasks.length > 0 ? `
-                                    <div style="margin-top: 2px; display: inline-block; padding: 2px 0;" onclick="toggleSubtaskView('${t.id}', event)">
-                                        <span id="toggle-icon-${t.id}" style="color: var(--primary); font-size: 11px; font-weight: 800; cursor: pointer; user-select: none;">${iconChar} ${t.subtasks.length} Subtasks</span>
+                                    ${progressHtml}
+                                    ${hasExpandable ? `
+                                    <div style="margin-top: 4px; display: inline-block; padding: 2px 0;" onclick="toggleSubtaskView('${t.id}', event)">
+                                        <span id="toggle-icon-${t.id}" style="color: var(--primary); font-size: 11px; font-weight: 800; cursor: pointer; user-select: none;">${iconChar} ${expandText}</span>
                                     </div>
                                     ` : ''}
                                 </div>
                                 <div class="task-meta"><div class="task-date">${dateStr}<br><span style="font-weight:500; font-size:10px; color:var(--text-sub);">${timeStr}</span></div></div>
                             </div>
                             ${subHtml}
+                            ${notesHtml}
                         </div>`;
                     });
                 }
@@ -555,11 +1330,14 @@
             document.getElementById('taskTitle').value = '';
             document.getElementById('taskSubject').value = '';
             document.getElementById('taskDue').value = '';
+            document.getElementById('taskNotes').value = '';
+            document.getElementById('taskTags').value = '';
             document.getElementById('taskRecurring').checked = false;
             document.getElementById('taskRecurUntil').value = '';
             document.getElementById('editOccurGroup').style.display = 'none';
             document.getElementById('taskThisOccurOnly').checked = false;
             document.getElementById('deployBtn').innerText = 'Deploy to Matrix';
+            document.getElementById('deleteBtn').style.display = 'none'; 
             toggleRecur();
         }
 
@@ -575,6 +1353,9 @@
             document.getElementById('taskType').value = task.type || 'Assignment';
             if (task.due) document.getElementById('taskDue').value = task.due.substring(0, 16);
             document.getElementById('taskPriority').value = task.priority || 'Normal';
+            document.getElementById('taskNotes').value = task.notes || '';
+            
+            document.getElementById('taskTags').value = task.tags ? task.tags.join(', ') : '';
             
             document.getElementById('taskRecurring').checked = !!task.recurring;
             toggleRecur();
@@ -589,6 +1370,7 @@
             }
             
             document.getElementById('deployBtn').innerText = 'Commit Changes';
+            document.getElementById('deleteBtn').style.display = 'block'; 
             switchTabView('create');
         }
 
@@ -631,12 +1413,17 @@
             let recurUntil = document.getElementById('taskRecurUntil').value;
             if (recurUntil && recurUntil.length === 16) recurUntil += ":00";
 
+            let rawTags = document.getElementById('taskTags').value;
+            let tagsArray = rawTags.split(',').map(s => s.trim()).filter(s => s);
+
             let payload = {
                 title: titleVal,
                 subject: document.getElementById('taskSubject').value.trim(),
                 type: document.getElementById('taskType').value,
                 due: dueVal + (dueVal.length === 16 ? ":00" : ""),
                 priority: document.getElementById('taskPriority').value,
+                notes: document.getElementById('taskNotes').value.trim() || null,
+                tags: tagsArray.length > 0 ? tagsArray : null,
                 recurring: isRecur,
                 interval: isRecur ? document.getElementById('taskInterval').value : null,
                 recur_until: isRecur ? recurUntil : null,
@@ -665,6 +1452,21 @@
             switchNavTab('matrix');
         }
 
+        async function sendToBin() {
+            if (!DATABASE_ID || !editingTaskId) return;
+            if (!confirm("Move this task to the Recycle Bin?")) return;
+            
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            await database.ref(DATABASE_ID + '/tasks/' + editingTaskId).update({ 
+                pending_completion: true, 
+                bin_timestamp: Date.now() 
+            });
+            document.getElementById('loadingOverlay').style.display = 'none';
+            
+            clearForm();
+            switchNavTab('matrix');
+        }
+
         async function completeTask(taskId, el) {
             if (!DATABASE_ID) return;
             el.classList.add('completed');
@@ -678,20 +1480,30 @@
             
             let now = new Date();
             let todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
-            let yesterday = new Date(now);
-            yesterday.setDate(yesterday.getDate() - 1);
-            let yestStr = yesterday.getFullYear() + '-' + String(yesterday.getMonth()+1).padStart(2,'0') + '-' + String(yesterday.getDate()).padStart(2,'0');
+
+            let isOverdue = task && new Date(task.due) < now;
+            let hasOtherOverdue = false;
+            let tasksSnap = await database.ref(DATABASE_ID + '/tasks').once('value');
+            let allT = tasksSnap.val() || {};
+            Object.keys(allT).forEach(k => {
+                if (k !== taskId && !allT[k].pending_completion && new Date(allT[k].due) < now) {
+                    hasOtherOverdue = true;
+                }
+            });
 
             let oldStreak = streak.current;
-            if (streak.lastDate === yestStr) {
-                streak.current++;
-                streak.lastDate = todayStr;
-            } else if (streak.lastDate !== todayStr) {
+            
+            if (isOverdue || hasOtherOverdue) {
                 streak.current = 1;
                 streak.lastDate = todayStr;
+            } else {
+                if (streak.lastDate !== todayStr) {
+                    streak.current++;
+                    streak.lastDate = todayStr;
+                }
             }
             
-            if (streak.current !== oldStreak) {
+            if (streak.current !== oldStreak || streak.lastDate !== todayStr) {
                 await database.ref(DATABASE_ID + '/streak').update(streak);
                 
                 if (streak.current > 1) { 
@@ -710,16 +1522,41 @@
 
             setTimeout(async () => {
                 document.getElementById('loadingOverlay').style.display = 'flex';
-                await database.ref(DATABASE_ID + '/tasks/' + taskId).update({ pending_completion: true });
+                await database.ref(DATABASE_ID + '/tasks/' + taskId).update({ 
+                    pending_completion: true,
+                    bin_timestamp: Date.now()
+                });
                 document.getElementById('loadingOverlay').style.display = 'none';
             }, 300);
         }
 
         function switchTabView(t) {
+            currentView = t;
             document.getElementById('view-matrix').classList.toggle('active-view', t==='matrix'); 
             document.getElementById('view-create').classList.toggle('active-view', t==='create');
-            document.getElementById('nav-matrix').classList.toggle('active', t==='matrix'); 
-            document.getElementById('nav-create').classList.toggle('active', t==='create');
+            document.getElementById('view-bin').classList.toggle('active-view', t==='bin'); 
+            document.getElementById('view-stats').classList.toggle('active-view', t==='stats'); 
+            document.getElementById('view-gpa').classList.toggle('active-view', t==='gpa'); 
+            document.getElementById('view-grade').classList.toggle('active-view', t==='grade'); 
+            
+            const fab = document.getElementById('mainFab');
+            if (t !== 'matrix') {
+                fab.classList.add('close-mode');
+            } else {
+                fab.classList.remove('close-mode');
+            }
+
+            const leftTools = document.getElementById('leftTools');
+            if (t !== 'matrix') {
+                leftTools.classList.add('hidden');
+            } else {
+                leftTools.classList.remove('hidden');
+            }
+            
+            if (t === 'bin') buildBinList();
+            if (t === 'stats') buildStatsView();
+            if (t === 'gpa') renderGpaView();
+            if (t === 'grade') renderGradeView();
         }
 
         function switchNavTab(t) {
