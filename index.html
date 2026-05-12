@@ -225,17 +225,23 @@
         <div style="text-align: center; margin-bottom: 24px;">
             <div style="font-size: 48px; margin-bottom: 10px;">📈</div>
             <h3 style="margin: 0; font-weight: 800;">Analytics Dashboard</h3>
-            <p style="color: var(--text-sub); font-size: 13px; margin-top: 5px;">Your performance over the last 7 days.</p>
+            <p style="color: var(--text-sub); font-size: 13px; margin-top: 5px;">Your performance over time.</p>
         </div>
         
+        <!-- Analytics Timeframe Toggle -->
+        <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 20px;">
+            <button id="btn7d" onclick="setAnalyticsTimeframe('7d')" style="padding: 8px 20px; border-radius: 20px; background: var(--primary); color: white; border: none; font-weight: 800; font-size: 12px; cursor: pointer; transition: 0.2s;">7 Days</button>
+            <button id="btn90d" onclick="setAnalyticsTimeframe('90d')" style="padding: 8px 20px; border-radius: 20px; background: var(--surface); color: var(--text-sub); border: 1px solid var(--border); font-weight: 800; font-size: 12px; cursor: pointer; transition: 0.2s;">3 Months</button>
+        </div>
+
         <div class="dashboard-stats" style="grid-template-columns: 1fr 1fr 1fr;">
             <div class="stat-card">
-                <p class="stat-val" id="statsTotal7D" style="color: var(--primary);">0</p>
-                <p class="stat-label">Done (7d)</p>
+                <p class="stat-val" id="statsTotalTimeframe" style="color: var(--primary);">0</p>
+                <p class="stat-label" id="lblTotalDone">Done (7d)</p>
             </div>
             <div class="stat-card">
-                <p class="stat-val" id="statsAvgDay">0</p>
-                <p class="stat-label">Avg/Day</p>
+                <p class="stat-val" id="statsAvg">0</p>
+                <p class="stat-label" id="lblAvg">Avg/Day</p>
             </div>
             <div class="stat-card">
                 <p class="stat-val" id="statsOnTime" style="color: var(--success);">0%</p>
@@ -273,24 +279,25 @@
         <div style="text-align: center; margin-bottom: 24px;">
             <div style="font-size: 48px; margin-bottom: 10px;">🎓</div>
             <h3 style="margin: 0; font-weight: 800;">GPA Calculator</h3>
-            <p style="color: var(--text-sub); font-size: 13px; margin-top: 5px;">Track your live academic standing.</p>
+            <p style="color: var(--text-sub); font-size: 13px; margin-top: 5px;">Track term and cumulative GPA.</p>
         </div>
 
-        <div class="stat-card" style="margin-bottom: 20px; padding: 20px;">
-            <p class="stat-val" id="gpaTotalDisplay" style="color: var(--primary); font-size: 42px;">0.00</p>
-            <p class="stat-label">Cumulative GPA</p>
+        <div class="stat-card" style="margin-bottom: 20px; padding: 20px; background: var(--primary); border: none;">
+            <p class="stat-val" id="gpaTotalDisplay" style="color: white; font-size: 42px;">0.00</p>
+            <p class="stat-label" style="color: rgba(255, 255, 255, 0.8);">Cumulative GPA</p>
         </div>
 
-        <div style="display: flex; gap: 8px; margin-bottom: 8px; padding: 0 12px;">
-            <span style="flex: 2; font-size: 11px; font-weight: 700; color: var(--text-sub); text-transform: uppercase;">Course Name</span>
-            <span style="flex: 1; font-size: 11px; font-weight: 700; color: var(--text-sub); text-transform: uppercase; text-align: center;">Credits</span>
-            <span style="flex: 1; font-size: 11px; font-weight: 700; color: var(--text-sub); text-transform: uppercase; text-align: center;">Grade</span>
-            <span style="width: 24px;"></span>
+        <div style="background: var(--surface); padding: 15px; border-radius: 14px; border: 1px solid var(--border); margin-bottom: 20px;">
+            <h4 style="margin: 0 0 10px 0; font-size: 12px; font-weight: 800; text-transform: uppercase; color: var(--text-sub);">Prior Academic History (Optional)</h4>
+            <div style="display: flex; gap: 10px;">
+                <input type="number" id="priorCredits" placeholder="Prior Credits" onchange="updatePriorGpa()" style="flex: 1; padding: 12px; font-size: 14px;">
+                <input type="number" id="priorGpa" placeholder="Prior GPA" onchange="updatePriorGpa()" step="0.01" style="flex: 1; padding: 12px; font-size: 14px;">
+            </div>
         </div>
 
-        <div id="gpaCourseList"></div>
+        <div id="gpaSemesterList"></div>
 
-        <button class="primary-btn" style="background: var(--surface); color: var(--primary); border: 2px dashed var(--primary); margin-top: 15px;" onclick="addGpaCourse()">+ Add Course</button>
+        <button class="primary-btn" style="background: var(--surface); color: var(--text-main); border: 2px dashed var(--border); margin-top: 15px;" onclick="addGpaSemester()">+ Add Semester</button>
     </div>
 
     <!-- RECYCLE BIN VIEW -->
@@ -298,7 +305,8 @@
         <div style="text-align: center; margin-bottom: 20px;">
             <div style="font-size: 48px; margin-bottom: 10px;">♻️</div>
             <h3 style="margin: 0; font-weight: 800;">Recycle Bin</h3>
-            <p style="color: var(--text-sub); font-size: 13px; margin-top: 5px;">Tasks are securely held here for 15 days before permanent deletion.</p>
+            <p style="color: var(--text-sub); font-size: 13px; margin-top: 5px;">View completed/deleted tasks. Recover to dashboard as templates.</p>
+            <button onclick="emptyBin()" style="background: var(--surface); color: var(--danger); border: 1px solid var(--danger); padding: 8px 16px; border-radius: 12px; font-size: 12px; font-weight: 800; margin-top: 10px; cursor: pointer;">Empty Bin Now</button>
         </div>
         <div id="binList"></div>
     </div>
@@ -333,7 +341,6 @@
             <div id="builderList" style="background: var(--surface); border-radius: 14px; border: 1px solid var(--border); display: none; overflow: hidden;"></div>
         </div>
 
-        <!-- NEW: Custom Tags -->
         <div class="form-group">
             <label>Custom Tags (Optional)</label>
             <input type="text" id="taskTags" placeholder="e.g. group-project, extra-credit (comma separated)">
@@ -410,7 +417,7 @@
         let editingTaskOriginal = null;
         let globalTaskData = null;
         let globalGpaData = {}; 
-        let globalGradeData = {}; // Grade Storage
+        let globalGradeData = {}; 
         let activeSubjectFilter = 'All'; 
         let activeTypeFilter = 'All';
         let currentSubtasks = []; 
@@ -421,12 +428,32 @@
         
         let focusMode = false;
         let isDarkMode = localStorage.getItem('matrix_dark_mode') === 'true';
+        let analyticsTimeframe = '7d'; // '7d' or '90d'
 
         const subjectColors = ['#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
         
         // Chart Objects
         let historyChart = null;
         let subjectChart = null;
+
+        // Core Task Routing Engine (Bullet-proof implementation of single explicit state)
+        function getTaskState(t) {
+            if (t.matrix_state) return t.matrix_state;
+            
+            // Legacy fallbacks for older tasks
+            if (t.location) {
+                if (t.location === 'dashboard') return 'active';
+                if (t.location === 'archive') return 'archived';
+                if (t.location === 'bin') {
+                    return t.status === 'deleted' ? 'deleted' : 'completed';
+                }
+            }
+            if (t.pending_completion) {
+                if (t.bin_hidden) return 'archived';
+                return t.status === 'deleted' ? 'deleted' : 'completed';
+            }
+            return 'active';
+        }
 
         document.addEventListener('DOMContentLoaded', () => {
             applyDarkMode(); 
@@ -517,10 +544,16 @@
             streakClickTimer = setTimeout(() => { streakClickCount = 0; }, 500);
         }
 
+        function changeSortMode() {
+            activeSubjectFilter = 'All';
+            activeTypeFilter = 'All';
+            localStorage.setItem('matrix_sort', document.getElementById('sortMode').value);
+            buildTaskList(); 
+        }
+
         function changeSecondaryFilter() {
             let mode = document.getElementById('sortMode').value;
             let val = document.getElementById('secondaryFilter').value;
-            
             if (mode === 'date') {
                 lookaheadDays = parseInt(val);
                 localStorage.setItem('matrix_lookahead', lookaheadDays);
@@ -529,7 +562,7 @@
             } else if (mode === 'type') {
                 activeTypeFilter = val;
             }
-            if (globalTaskData) buildTaskList();
+            buildTaskList(); 
         }
 
         function populateSecondaryFilter(optionsList) {
@@ -537,31 +570,35 @@
             const filterEl = document.getElementById('secondaryFilter');
             if (!filterEl) return;
             
-            let html = '';
+            while (filterEl.firstChild) {
+                filterEl.removeChild(filterEl.firstChild);
+            }
+            
             if (sortMode === 'date') {
                 [1, 2, 3, 4, 5].forEach(d => {
-                    let selected = (d == lookaheadDays) ? 'selected' : '';
-                    html += `<option value="${d}" ${selected}>${d} Day${d > 1 ? 's' : ''}</option>`;
+                    let opt = document.createElement('option');
+                    opt.value = d;
+                    opt.text = `${d} Day${d > 1 ? 's' : ''}`;
+                    if (d == lookaheadDays) opt.selected = true;
+                    filterEl.appendChild(opt);
                 });
             } else if (sortMode === 'subject') {
                 optionsList.forEach(s => {
-                    let selected = (s === activeSubjectFilter) ? 'selected' : '';
-                    let displayLabel = s === 'All' ? 'All Subjects' : s;
-                    html += `<option value="${s.replace(/'/g, "\\'")}" ${selected}>${displayLabel}</option>`;
+                    let opt = document.createElement('option');
+                    opt.value = s;
+                    opt.text = s === 'All' ? 'All Subjects' : s;
+                    if (s === activeSubjectFilter) opt.selected = true;
+                    filterEl.appendChild(opt);
                 });
             } else if (sortMode === 'type') {
                 optionsList.forEach(t => {
-                    let selected = (t === activeTypeFilter) ? 'selected' : '';
-                    let displayLabel = t === 'All' ? 'All Classifications' : t;
-                    html += `<option value="${t.replace(/'/g, "\\'")}" ${selected}>${displayLabel}</option>`;
+                    let opt = document.createElement('option');
+                    opt.value = t;
+                    opt.text = t === 'All' ? 'All Classifications' : t;
+                    if (t === activeTypeFilter) opt.selected = true;
+                    filterEl.appendChild(opt);
                 });
             }
-            filterEl.innerHTML = html;
-        }
-
-        function changeSortMode() {
-            localStorage.setItem('matrix_sort', document.getElementById('sortMode').value);
-            if (globalTaskData) buildTaskList();
         }
 
         let titleClickCount = 0, titleClickTimer = null;
@@ -599,16 +636,14 @@
 
                     database.ref(DATABASE_ID + '/streak').on('value', sSnap => {
                         globalStreak = sSnap.val() || { current: 0, lastDate: '' };
-                        if (globalTaskData) buildTaskList();
+                        buildTaskList();
                     });
 
-                    // Load GPA Data
                     database.ref(DATABASE_ID + '/gpa').on('value', snap => {
                         globalGpaData = snap.val() || {};
                         if (currentView === 'gpa') renderGpaView();
                     });
 
-                    // Load Hierarchical Grade Data
                     database.ref(DATABASE_ID + '/grades').on('value', snap => {
                         globalGradeData = snap.val() || {};
                         if (currentView === 'grade') renderGradeView();
@@ -644,6 +679,7 @@
             if (currentView === 'stats') buildStatsView();
         }
 
+        // Timer-Based Cleanup relying strictly on new explicit matrix_state 
         function cleanupBin() {
             if (!globalTaskData || !DATABASE_ID) return;
             const now = Date.now();
@@ -654,10 +690,16 @@
 
             Object.keys(globalTaskData).forEach(k => {
                 let t = globalTaskData[k];
-                if (t.pending_completion) {
-                    if (t.bin_timestamp) {
+                let state = getTaskState(t);
+                
+                if (state === 'completed' || state === 'deleted') {
+                    if (t.bin_timestamp && t.bin_timestamp > 0) {
                         if (now - t.bin_timestamp > FIFTEEN_DAYS) {
-                            updates[k] = null; 
+                            if (state === 'deleted') {
+                                updates[k] = null; // Physically wipe manually deleted tasks
+                            } else {
+                                updates[k + '/matrix_state'] = 'archived'; // Hide from bin UI, keep for stats
+                            }
                             hasUpdates = true;
                         }
                     } else {
@@ -669,7 +711,7 @@
             if (hasUpdates) database.ref(DATABASE_ID + '/tasks').update(updates);
         }
 
-        // --- GRADE CALCULATOR LOGIC (HIERARCHICAL) ---
+        // --- GRADE CALCULATOR LOGIC ---
         function renderGradeView() {
             const list = document.getElementById('gradeCourseList');
             let html = '';
@@ -711,16 +753,19 @@
                         }
 
                         let catScorePct = catTotal > 0 ? (catEarned / catTotal) : 0;
-                        courseEarnedPoints += (catScorePct * catWeight);
+                        let catPoints = catScorePct * catWeight;
+                        courseEarnedPoints += catPoints;
 
-                        let catDisplayScore = catTotal > 0 ? (catScorePct * 100).toFixed(1) + '%' : '0%';
+                        let dispPoints = parseFloat(catPoints.toFixed(2));
+                        let dispWeight = parseFloat(catWeight.toFixed(2));
+                        let catDisplayScore = `${dispPoints} / ${dispWeight}`;
 
                         categoriesHtml += `
                             <div style="background:var(--bg); padding:12px; border-radius:12px; margin-bottom:12px; border: 1px solid var(--border);">
                                 <div style="display:flex; gap:8px; margin-bottom:12px; align-items:center;">
                                     <input type="text" placeholder="Category (e.g. Exams)" value="${cat.name||''}" onchange="updateGradeCategory('${courseId}', '${catId}', 'name', this.value)" style="flex:2; padding:8px; font-size:13px; min-width:0;">
-                                    <input type="number" placeholder="Weight %" value="${cat.weight||''}" onchange="updateGradeCategory('${courseId}', '${catId}', 'weight', this.value)" style="flex:1; padding:8px; font-size:13px; text-align:center; min-width:0;">
-                                    <span style="font-size:13px; font-weight:800; color:var(--primary); min-width:45px; text-align:right;">${catDisplayScore}</span>
+                                    <input type="number" placeholder="Weight" value="${cat.weight||''}" onchange="updateGradeCategory('${courseId}', '${catId}', 'weight', this.value)" style="flex:1; padding:8px; font-size:13px; text-align:center; min-width:0;">
+                                    <span style="font-size:13px; font-weight:800; color:var(--primary); min-width:45px; text-align:right; white-space:nowrap;">${catDisplayScore}</span>
                                     <button onclick="removeGradeCategory('${courseId}', '${catId}')" style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:16px; margin-left:4px;">✕</button>
                                 </div>
                                 <div style="padding-left:12px; border-left:2px solid var(--primary); margin-left: 4px;">
@@ -745,7 +790,7 @@
                             <button onclick="removeGradeCourse('${courseId}')" style="background:var(--danger); border:none; color:white; cursor:pointer; font-size:12px; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center;">✕</button>
                         </div>
                         ${categoriesHtml}
-                        <button class="primary-btn" style="background: var(--surface); color: var(--text-main); border: 1px dashed var(--border); padding:12px; font-size:13px; margin-top:4px;" onclick="addGradeCategory('${courseId}')">+ Add Category (e.g. Homework 25%)</button>
+                        <button class="primary-btn" style="background: var(--surface); color: var(--text-main); border: 1px dashed var(--border); padding:12px; font-size:13px; margin-top:4px;" onclick="addGradeCategory('${courseId}')">+ Add Category (e.g. Homework 25)</button>
                     </div>
                 `;
             });
@@ -805,64 +850,169 @@
             if (!DATABASE_ID) return;
             database.ref(DATABASE_ID + '/grades/' + cId + '/categories/' + catId + '/activities/' + actId).remove();
         }
-        // --- END GRADE CALCULATOR LOGIC ---
 
         // --- GPA LOGIC ---
         function renderGpaView() {
-            const list = document.getElementById('gpaCourseList');
-            let html = '';
-            let totalCredits = 0;
-            let totalPoints = 0;
-            
-            const gradeValues = { 'A+': 4.0, 'A': 4.0, 'A-': 3.7, 'B+': 3.3, 'B': 3.0, 'B-': 2.7, 'C+': 2.3, 'C': 2.0, 'C-': 1.7, 'D+': 1.3, 'D': 1.0, 'F': 0.0 };
-
-            Object.keys(globalGpaData).forEach(k => {
-                let course = globalGpaData[k];
-                let creds = parseFloat(course.credits) || 0;
-                if (course.grade && gradeValues[course.grade] !== undefined) {
-                    totalCredits += creds;
-                    totalPoints += (creds * gradeValues[course.grade]);
-                }
-
-                html += `
-                <div class="gpa-card">
-                    <input type="text" value="${course.name || ''}" placeholder="Course Name" onchange="updateGpaCourse('${k}', 'name', this.value)" style="flex: 2; text-align: left;">
-                    <input type="number" value="${course.credits || ''}" placeholder="Cr." onchange="updateGpaCourse('${k}', 'credits', this.value)" style="flex: 1; text-align: center;">
-                    <select onchange="updateGpaCourse('${k}', 'grade', this.value)" style="flex: 1;">
-                        <option value="">--</option>
-                        ${Object.keys(gradeValues).map(g => `<option value="${g}" ${course.grade === g ? 'selected' : ''}>${g}</option>`).join('')}
-                    </select>
-                    <button onclick="removeGpaCourse('${k}')" style="background: none; border: none; color: var(--danger); font-size: 18px; cursor: pointer; padding: 0 4px; margin-left: 4px;">✕</button>
-                </div>`;
-            });
-            
-            if (Object.keys(globalGpaData).length === 0) {
-                html = '<p style="text-align:center; color:var(--text-sub); margin-top:20px;">No courses added yet. Tap below to start calculating your GPA.</p>';
+            // Data Migration for older loose courses
+            let hasOldFormat = false;
+            let oldCourses = {};
+            if (globalGpaData) {
+                Object.keys(globalGpaData).forEach(k => {
+                    if (k !== 'prior' && k !== 'semesters' && globalGpaData[k].credits !== undefined) {
+                        hasOldFormat = true;
+                        oldCourses[k] = globalGpaData[k];
+                    }
+                });
             }
 
-            list.innerHTML = html;
+            if (hasOldFormat && DATABASE_ID) {
+                let updates = {};
+                updates['/gpa/semesters/default_sem/name'] = "Semester 1";
+                Object.keys(oldCourses).forEach(k => {
+                    let courseData = oldCourses[k];
+                    courseData.scale = 'plus_minus'; 
+                    updates['/gpa/semesters/default_sem/courses/' + k] = courseData;
+                    updates['/gpa/' + k] = null;
+                });
+                database.ref(DATABASE_ID).update(updates);
+                return; // Let Firebase trigger re-render
+            }
+
+            let priorCredits = parseFloat(globalGpaData?.prior?.credits) || 0;
+            let priorGpa = parseFloat(globalGpaData?.prior?.gpa) || 0;
+            let totalPoints = priorCredits * priorGpa;
+            let totalCredits = priorCredits;
+
+            let semestersHtml = '';
+            let semesters = globalGpaData?.semesters || {};
+
+            Object.keys(semesters).forEach(semId => {
+                let sem = semesters[semId];
+                let semCredits = 0;
+                let semPoints = 0;
+
+                let coursesHtml = '';
+                let courses = sem.courses || {};
+
+                Object.keys(courses).forEach(cId => {
+                    let c = courses[cId];
+                    let cCreds = parseFloat(c.credits) || 0;
+                    let cScale = c.scale || 'plus_minus';
+
+                    let scaleValues = cScale === 'simple' 
+                        ? { 'A': 4.0, 'B': 3.0, 'C': 2.0, 'D': 1.0, 'F': 0.0 }
+                        : { 'A+': 4.0, 'A': 4.0, 'A-': 3.7, 'B+': 3.3, 'B': 3.0, 'B-': 2.7, 'C+': 2.3, 'C': 2.0, 'C-': 1.7, 'D+': 1.3, 'D': 1.0, 'F': 0.0 };
+
+                    if (c.grade && scaleValues[c.grade] !== undefined) {
+                        semCredits += cCreds;
+                        semPoints += (cCreds * scaleValues[c.grade]);
+                    }
+
+                    let gradeOptions = Object.keys(scaleValues).map(g => `<option value="${g}" ${c.grade === g ? 'selected' : ''}>${g}</option>`).join('');
+
+                    coursesHtml += `
+                    <div class="gpa-card" style="align-items: flex-start; padding: 12px; margin-bottom: 8px;">
+                        <div style="display: flex; flex-direction: column; flex: 2; gap: 6px; margin-right: 8px;">
+                            <input type="text" value="${c.name || ''}" placeholder="Course Name" onchange="updateGpaCourse('${semId}', '${cId}', 'name', this.value)" style="padding: 10px; font-size: 14px;">
+                            <select onchange="updateGpaCourse('${semId}', '${cId}', 'scale', this.value)" style="padding: 8px; font-size: 12px; color: var(--text-sub);">
+                                <option value="plus_minus" ${cScale==='plus_minus'?'selected':''}>+/- Grading Scale</option>
+                                <option value="simple" ${cScale==='simple'?'selected':''}>A/B/C/D/F Scale</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; flex-direction: column; flex: 1; gap: 6px;">
+                            <input type="number" value="${c.credits || ''}" placeholder="Cr." onchange="updateGpaCourse('${semId}', '${cId}', 'credits', this.value)" style="padding: 10px; font-size: 14px; text-align: center;">
+                            <select onchange="updateGpaCourse('${semId}', '${cId}', 'grade', this.value)" style="padding: 10px; font-size: 14px;">
+                                <option value="">--</option>
+                                ${gradeOptions}
+                            </select>
+                        </div>
+                        <button onclick="removeGpaCourse('${semId}', '${cId}')" style="background: none; border: none; color: var(--danger); font-size: 20px; cursor: pointer; padding: 4px; margin-left: 4px;">✕</button>
+                    </div>
+                    `;
+                });
+
+                totalCredits += semCredits;
+                totalPoints += semPoints;
+                let semGpa = semCredits > 0 ? (semPoints / semCredits).toFixed(2) : '0.00';
+
+                semestersHtml += `
+                    <div style="background: var(--surface); padding: 15px; border-radius: 14px; border: 1px solid var(--border); margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <input type="text" value="${sem.name || ''}" placeholder="Semester Name (e.g. Fall 2026)" onchange="updateGpaSemester('${semId}', 'name', this.value)" style="font-size: 16px; font-weight: 800; border: none; border-bottom: 2px solid var(--primary); border-radius: 0; background: transparent; color: var(--text-main); width: 60%; padding: 4px 8px;">
+                            <div style="text-align: right;">
+                                <span style="font-size: 20px; font-weight: 800; color: var(--primary);">${semGpa}</span>
+                                <div style="font-size: 10px; color: var(--text-sub); text-transform: uppercase; font-weight: 700;">Term GPA</div>
+                            </div>
+                            <button onclick="removeGpaSemester('${semId}')" style="background:var(--danger); border:none; color:white; cursor:pointer; font-size:12px; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-left: 12px;">✕</button>
+                        </div>
+                        ${coursesHtml}
+                        <button class="primary-btn" style="background: rgba(79, 70, 229, 0.1); color: var(--primary); padding: 12px; font-size: 13px; margin-top: 5px;" onclick="addGpaCourse('${semId}')">+ Add Course</button>
+                    </div>
+                `;
+            });
+
+            document.getElementById('gpaSemesterList').innerHTML = semestersHtml || '<p style="text-align:center; color:var(--text-sub); margin-top:20px;">No semesters added yet.</p>';
 
             let finalGpa = totalCredits > 0 ? (totalPoints / totalCredits).toFixed(2) : '0.00';
             document.getElementById('gpaTotalDisplay').innerText = finalGpa;
+
+            document.getElementById('priorCredits').value = globalGpaData?.prior?.credits || '';
+            document.getElementById('priorGpa').value = globalGpaData?.prior?.gpa || '';
         }
 
-        function addGpaCourse() {
+        function updatePriorGpa() {
             if (!DATABASE_ID) return;
-            database.ref(DATABASE_ID + '/gpa/' + Date.now()).set({ name: '', credits: 3, grade: '' });
+            const creds = document.getElementById('priorCredits').value;
+            const gpa = document.getElementById('priorGpa').value;
+            database.ref(DATABASE_ID + '/gpa/prior').set({ credits: creds, gpa: gpa });
         }
 
-        function updateGpaCourse(id, field, value) {
+        function addGpaSemester() {
             if (!DATABASE_ID) return;
-            database.ref(DATABASE_ID + '/gpa/' + id + '/' + field).set(value);
+            database.ref(DATABASE_ID + '/gpa/semesters/' + Date.now()).set({ name: '' });
         }
 
-        function removeGpaCourse(id) {
+        function updateGpaSemester(semId, field, value) {
             if (!DATABASE_ID) return;
-            if(confirm("Remove this course from your GPA?")) {
-                database.ref(DATABASE_ID + '/gpa/' + id).remove();
+            database.ref(DATABASE_ID + '/gpa/semesters/' + semId + '/' + field).set(value);
+        }
+
+        function removeGpaSemester(semId) {
+            if (!DATABASE_ID) return;
+            if(confirm("Remove this semester and all its courses?")) {
+                database.ref(DATABASE_ID + '/gpa/semesters/' + semId).remove();
             }
         }
-        // --- END GPA LOGIC ---
+
+        function addGpaCourse(semId) {
+            if (!DATABASE_ID) return;
+            database.ref(DATABASE_ID + '/gpa/semesters/' + semId + '/courses/' + Date.now()).set({ name: '', credits: 3, grade: '', scale: 'plus_minus' });
+        }
+
+        function updateGpaCourse(semId, courseId, field, value) {
+            if (!DATABASE_ID) return;
+            database.ref(DATABASE_ID + '/gpa/semesters/' + semId + '/courses/' + courseId + '/' + field).set(value);
+        }
+
+        function removeGpaCourse(semId, courseId) {
+            if (!DATABASE_ID) return;
+            if(confirm("Remove this course from your GPA?")) {
+                database.ref(DATABASE_ID + '/gpa/semesters/' + semId + '/courses/' + courseId).remove();
+            }
+        }
+
+        function setAnalyticsTimeframe(tf) {
+            analyticsTimeframe = tf;
+            document.getElementById('btn7d').style.background = tf === '7d' ? 'var(--primary)' : 'var(--surface)';
+            document.getElementById('btn7d').style.color = tf === '7d' ? 'white' : 'var(--text-sub)';
+            document.getElementById('btn7d').style.border = tf === '7d' ? 'none' : '1px solid var(--border)';
+
+            document.getElementById('btn90d').style.background = tf === '90d' ? 'var(--primary)' : 'var(--surface)';
+            document.getElementById('btn90d').style.color = tf === '90d' ? 'white' : 'var(--text-sub)';
+            document.getElementById('btn90d').style.border = tf === '90d' ? 'none' : '1px solid var(--border)';
+
+            buildStatsView();
+        }
 
         function buildStatsView() {
             if (!globalTaskData) return;
@@ -872,41 +1022,68 @@
             const surfaceColor = isDarkMode ? '#1E293B' : '#FFFFFF';
 
             let now = Date.now();
-            const daysArr = [];
-            const completionData = [0, 0, 0, 0, 0, 0, 0];
+            const labelsArr = [];
+            const completionData = [];
             let subjectDistribution = {};
-            let total7D = 0;
+            let totalPeriod = 0;
             let onTimeCount = 0;
             let totalAnalyzed = 0; 
 
-            for (let i = 6; i >= 0; i--) {
-                let d = new Date(now - (i * 86400000));
-                daysArr.push(d.toLocaleDateString('en-US', { weekday: 'short' }));
+            if (analyticsTimeframe === '7d') {
+                for (let i = 6; i >= 0; i--) {
+                    labelsArr.push(new Date(now - (i * 86400000)).toLocaleDateString('en-US', { weekday: 'short' }));
+                    completionData.push(0);
+                }
+            } else {
+                for (let i = 11; i >= 0; i--) {
+                    labelsArr.push(i === 0 ? 'This Wk' : `-${i} Wk`);
+                    completionData.push(0);
+                }
             }
 
             Object.values(globalTaskData).forEach(t => {
-                if (t.pending_completion && t.bin_timestamp) {
-                    let diffDays = Math.floor((now - t.bin_timestamp) / 86400000);
+                let state = getTaskState(t);
+                let isCompleted = state === 'completed' || state === 'archived';
+                
+                if (isCompleted && t.bin_timestamp) {
+                    let diffTime = now - t.bin_timestamp;
                     
-                    if (diffDays >= 0 && diffDays < 7) {
-                        let dayIndex = 6 - diffDays;
-                        completionData[dayIndex]++;
-                        total7D++;
-
-                        let sub = t.subject || 'Other';
-                        subjectDistribution[sub] = (subjectDistribution[sub] || 0) + 1;
-
-                        if (t.due) {
-                            totalAnalyzed++;
-                            let dueTime = new Date(t.due).getTime();
-                            if (t.bin_timestamp <= dueTime) onTimeCount++;
+                    if (analyticsTimeframe === '7d') {
+                        let diffDays = Math.floor(diffTime / 86400000);
+                        if (diffDays >= 0 && diffDays < 7) {
+                            completionData[6 - diffDays]++;
+                            totalPeriod++;
+                            let sub = t.subject || 'Other';
+                            subjectDistribution[sub] = (subjectDistribution[sub] || 0) + 1;
+                            if (t.due) {
+                                totalAnalyzed++;
+                                let dueTime = new Date(t.due).getTime();
+                                if (t.bin_timestamp <= dueTime) onTimeCount++;
+                            }
+                        }
+                    } else { 
+                        let diffWeeks = Math.floor(diffTime / (7 * 86400000));
+                        if (diffWeeks >= 0 && diffWeeks < 12) {
+                            completionData[11 - diffWeeks]++;
+                            totalPeriod++;
+                            let sub = t.subject || 'Other';
+                            subjectDistribution[sub] = (subjectDistribution[sub] || 0) + 1;
+                            if (t.due) {
+                                totalAnalyzed++;
+                                let dueTime = new Date(t.due).getTime();
+                                if (t.bin_timestamp <= dueTime) onTimeCount++;
+                            }
                         }
                     }
                 }
             });
 
-            document.getElementById('statsTotal7D').innerText = total7D;
-            document.getElementById('statsAvgDay').innerText = (total7D / 7).toFixed(1);
+            document.getElementById('statsTotalTimeframe').innerText = totalPeriod;
+            document.getElementById('lblTotalDone').innerText = analyticsTimeframe === '7d' ? 'Done (7d)' : 'Done (12w)';
+            
+            let avgDivisor = analyticsTimeframe === '7d' ? 7 : 12;
+            document.getElementById('statsAvg').innerText = (totalPeriod / avgDivisor).toFixed(1);
+            document.getElementById('lblAvg').innerText = analyticsTimeframe === '7d' ? 'Avg/Day' : 'Avg/Week';
             
             let onTimePct = totalAnalyzed > 0 ? Math.round((onTimeCount / totalAnalyzed) * 100) : 100;
             const onTimeEl = document.getElementById('statsOnTime');
@@ -919,7 +1096,7 @@
             historyChart = new Chart(ctxHist, {
                 type: 'bar',
                 data: {
-                    labels: daysArr,
+                    labels: labelsArr,
                     datasets: [{
                         label: 'Tasks Completed',
                         data: completionData,
@@ -1050,7 +1227,10 @@
             
             let binTasks = Object.keys(globalTaskData)
                 .map(k => ({id: k, ...globalTaskData[k]}))
-                .filter(t => t.pending_completion);
+                .filter(t => {
+                    let state = getTaskState(t);
+                    return state === 'completed' || state === 'deleted';
+                });
             
             if (binTasks.length === 0) {
                 list.innerHTML = '<p style="text-align:center; color:var(--text-sub); margin-top: 40px; font-weight: 600;">Bin is entirely empty.</p>';
@@ -1061,19 +1241,27 @@
             
             let html = '';
             binTasks.forEach(t => {
+                let state = getTaskState(t);
                 let icon = {Assignment:"📄",Quiz:"🧠",Exam:"🎯","Lab Report":"🔬",Study:"📚"}[t.type] || "📄";
                 let daysLeft = 15 - Math.floor((Date.now() - (t.bin_timestamp || Date.now())) / (1000 * 60 * 60 * 24));
                 if(daysLeft < 0) daysLeft = 0;
 
+                let expireText = state === 'deleted' 
+                    ? `Permanently deletes in ${daysLeft} days` 
+                    : `Hides from bin in ${daysLeft} days (Kept for Stats)`;
+
                 html += `<div class="task-wrapper" style="opacity: 0.8; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
-                    <div style="display: flex; align-items: center; min-width: 0;">
+                    <div style="display: flex; align-items: center; min-width: 0; padding-right: 8px;">
                         <div class="task-icon">${icon}</div>
                         <div class="task-info">
                             <p class="task-title" style="text-decoration: line-through; margin: 0; font-size: 14px;">${t.title}</p>
-                            <p class="task-sub" style="margin: 0; font-size: 11px;">Permanently deletes in ${daysLeft} days</p>
+                            <p class="task-sub" style="margin: 0; font-size: 11px;">${expireText}</p>
                         </div>
                     </div>
-                    <button onclick="recoverTask('${t.id}')" style="background: var(--success); color: white; border: none; padding: 10px 14px; border-radius: 10px; font-weight: 800; cursor: pointer; transition: 0.2s; font-size: 12px; flex-shrink: 0; margin-left: 10px;">Recover</button>
+                    <div style="display: flex; gap: 6px; flex-shrink: 0;">
+                        <button onclick="recoverTask('${t.id}')" style="background: var(--success); color: white; border: none; padding: 8px 12px; border-radius: 10px; font-weight: 800; cursor: pointer; transition: 0.2s; font-size: 12px;">Recover</button>
+                        <button onclick="permanentlyDeleteTask('${t.id}')" style="background: var(--danger); color: white; border: none; padding: 8px 12px; border-radius: 10px; font-weight: 800; cursor: pointer; transition: 0.2s; font-size: 12px;" title="Delete Forever">✕</button>
+                    </div>
                 </div>`;
             });
             list.innerHTML = html;
@@ -1082,10 +1270,54 @@
         async function recoverTask(taskId) {
             if (!DATABASE_ID) return;
             document.getElementById('loadingOverlay').style.display = 'flex';
-            await database.ref(DATABASE_ID + '/tasks/' + taskId).update({ 
+            
+            // Explicitly force states to migrated to destroy legacy overlapping data ghosts
+            await database.ref(DATABASE_ID + '/tasks/' + taskId).update({
+                matrix_state: 'active',
+                bin_timestamp: 0,
+                location: 'migrated',
+                status: 'migrated',
                 pending_completion: false,
-                bin_timestamp: null
+                bin_hidden: false
             });
+            
+            document.getElementById('loadingOverlay').style.display = 'none';
+            
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) searchInput.value = '';
+            if (focusMode) toggleFocusMode(); 
+            document.getElementById('sortMode').value = 'date';
+            changeSortMode(); 
+            
+            switchNavTab('matrix');
+        }
+
+        async function permanentlyDeleteTask(taskId) {
+            if (!DATABASE_ID) return;
+            if (!confirm("Permanently delete this task? This cannot be undone.")) return;
+
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            await database.ref(DATABASE_ID + '/tasks/' + taskId).remove();
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        async function emptyBin() {
+            if (!DATABASE_ID || !globalTaskData) return;
+            if (!confirm("Are you sure you want to clean up the Recycle Bin? (Deleted files vanish forever, Completed files hide but are kept for 3-Month Stats).")) return;
+
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            let updates = {};
+            Object.keys(globalTaskData).forEach(k => {
+                let t = globalTaskData[k];
+                let state = getTaskState(t);
+                
+                if (state === 'deleted') {
+                    updates[k] = null; // Wipe permanently
+                } else if (state === 'completed') {
+                    updates[k + '/matrix_state'] = 'archived'; // Hide from UI immediately
+                }
+            });
+            await database.ref(DATABASE_ID + '/tasks').update(updates);
             document.getElementById('loadingOverlay').style.display = 'none';
         }
 
@@ -1122,9 +1354,10 @@
                 return; 
             }
             
+            // Explicitly filter for Dashboard
             let allTasks = Object.keys(data)
                 .map(k => ({id: k, ...data[k]}))
-                .filter(t => !t.pending_completion);
+                .filter(t => getTaskState(t) === 'active');
 
             // Filter Focus Mode
             let now = new Date();
@@ -1135,7 +1368,7 @@
                 allTasks = allTasks.filter(t => new Date(t.due) <= todayEnd || t.priority === 'Critical');
             }
 
-            // Filter Search Query (NOW INCLUDES TAGS)
+            // Filter Search Query
             const searchInput = document.getElementById('searchInput');
             if (searchInput && searchInput.value.trim() !== '') {
                 const q = searchInput.value.toLowerCase().trim();
@@ -1171,8 +1404,7 @@
             let overdueOrTodayCount = 0;
             let overdueCount = 0;
             
-            // Re-map for original stat count logic (not affected by search/focus)
-            let baseTasks = Object.keys(data).map(k => ({id: k, ...data[k]})).filter(t => !t.pending_completion);
+            let baseTasks = Object.keys(data).map(k => ({id: k, ...data[k]})).filter(t => getTaskState(t) === 'active');
             baseTasks.forEach(t => {
                 let d = new Date(t.due);
                 if (d < now) overdueCount++;
@@ -1252,7 +1484,6 @@
                         let progressHtml = '';
                         let customTagsHtml = '';
                         
-                        // Render Subtasks
                         if(t.subtasks && t.subtasks.length > 0) {
                             let doneCount = t.subtasks.filter(s => s.done).length;
                             let pct = Math.round((doneCount / t.subtasks.length) * 100);
@@ -1272,7 +1503,6 @@
                                 `).join('') + `</div>`;
                         }
 
-                        // Render Tags
                         if (t.tags && t.tags.length > 0) {
                             customTagsHtml = `<div style="margin-top: 4px;">` + t.tags.map(tag => `<span class="tag-pill">#${tag}</span>`).join('') + `</div>`;
                         }
@@ -1397,6 +1627,11 @@
                 }
 
                 let newTask = {...task, due: nextDue, processed_by_pc: true, subtasks: nextSubtasks}; 
+                newTask.matrix_state = 'active';
+                newTask.location = 'migrated';
+                newTask.status = 'migrated';
+                newTask.pending_completion = false; 
+                newTask.bin_hidden = false;
                 delete newTask.id;
                 await database.ref(DATABASE_ID + '/tasks/' + (Date.now() + Math.floor(Math.random() * 1000))).set(newTask);
             }
@@ -1444,6 +1679,11 @@
                 await database.ref(DATABASE_ID + '/tasks/' + editingTaskId).update(payload);
             } else {
                 payload.processed_by_pc = false; 
+                payload.matrix_state = 'active';
+                payload.location = 'migrated';
+                payload.status = 'migrated';
+                payload.pending_completion = false;
+                payload.bin_hidden = false;
                 await database.ref(DATABASE_ID + '/tasks/' + Date.now()).set(payload);
             }
 
@@ -1457,9 +1697,14 @@
             if (!confirm("Move this task to the Recycle Bin?")) return;
             
             document.getElementById('loadingOverlay').style.display = 'flex';
+            // Explicitly force states to migrated to destroy legacy overlapping data ghosts
             await database.ref(DATABASE_ID + '/tasks/' + editingTaskId).update({ 
-                pending_completion: true, 
-                bin_timestamp: Date.now() 
+                matrix_state: 'deleted',
+                bin_timestamp: Date.now(),
+                location: 'migrated',
+                status: 'migrated',
+                pending_completion: false,
+                bin_hidden: false
             });
             document.getElementById('loadingOverlay').style.display = 'none';
             
@@ -1486,7 +1731,7 @@
             let tasksSnap = await database.ref(DATABASE_ID + '/tasks').once('value');
             let allT = tasksSnap.val() || {};
             Object.keys(allT).forEach(k => {
-                if (k !== taskId && !allT[k].pending_completion && new Date(allT[k].due) < now) {
+                if (k !== taskId && getTaskState(allT[k]) === 'active' && new Date(allT[k].due) < now) {
                     hasOtherOverdue = true;
                 }
             });
@@ -1514,17 +1759,26 @@
                         due: new Date().toISOString(),
                         priority: 'Normal',
                         recurring: false,
+                        matrix_state: 'active',
+                        location: 'migrated',
+                        status: 'migrated',
                         processed_by_pc: true,
-                        pending_completion: true 
+                        pending_completion: false,
+                        bin_hidden: false
                     });
                 }
             }
 
             setTimeout(async () => {
                 document.getElementById('loadingOverlay').style.display = 'flex';
+                // Explicitly force states to migrated to destroy legacy overlapping data ghosts
                 await database.ref(DATABASE_ID + '/tasks/' + taskId).update({ 
-                    pending_completion: true,
-                    bin_timestamp: Date.now()
+                    matrix_state: 'completed',
+                    bin_timestamp: Date.now(),
+                    location: 'migrated',
+                    status: 'migrated',
+                    pending_completion: false,
+                    bin_hidden: false
                 });
                 document.getElementById('loadingOverlay').style.display = 'none';
             }, 300);
