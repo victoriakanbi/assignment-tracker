@@ -6,8 +6,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Assignment Tracker</title>
     
-    <!-- Firebase SDKs -->
+    <!-- Firebase SDKs (Added Auth) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     
     <!-- SortableJS for mobile-friendly drag and drop -->
@@ -34,11 +35,15 @@
         input, select, textarea { user-select: auto; transition: background 0.3s, color 0.3s, border-color 0.3s; }
         ::-webkit-scrollbar { display: none; }
 
+        /* Auth Container */
+        #auth-container { height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
+        .auth-card { background: var(--surface); padding: 30px; border-radius: 20px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.05); width: 100%; max-width: 380px; text-align: center; }
+
         .header { background: rgba(var(--surface-rgb), 0.9); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); padding: calc(20px + env(safe-area-inset-top)) 20px 15px 20px; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; display: flex; justify-content: space-between; align-items: center; transition: border-color 0.3s; background: var(--surface); }
-        .header-info h2 { margin: 0; font-weight: 800; font-size: 24px; letter-spacing: -0.5px; cursor: pointer; }
+        .header-info h2 { margin: 0; font-weight: 800; font-size: 24px; letter-spacing: -0.5px; }
         .header-info p { margin: 4px 0 0 0; color: var(--primary); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
         
-        .connection-pill { padding: 5px 12px; border-radius: 20px; font-size: 10px; font-weight: 800; text-transform: uppercase; transition: 0.2s; }
+        .connection-pill { padding: 5px 12px; border-radius: 20px; font-size: 10px; font-weight: 800; text-transform: uppercase; transition: 0.2s; cursor: pointer; }
         .status-cloud { background: #DBEAFE; color: #1E40AF; }
         .status-error { background: #FEE2E2; color: #991B1B; }
         [data-theme="dark"] .status-cloud { background: #1E3A8A; color: #DBEAFE; }
@@ -77,7 +82,7 @@
 
         .form-group { margin-bottom: 20px; }
         label { font-size: 12px; font-weight: 700; color: var(--text-sub); display: block; margin-bottom: 8px; text-transform: uppercase; }
-        input[type="text"], input[type="datetime-local"], input[type="number"], select, textarea { width: 100%; padding: 16px; border-radius: 14px; border: 1px solid var(--border); box-sizing: border-box; font-size: 16px; -webkit-appearance: none; background: var(--surface); color: var(--text-main); font-family: inherit; }
+        input[type="text"], input[type="email"], input[type="password"], input[type="datetime-local"], input[type="number"], select, textarea { width: 100%; padding: 16px; border-radius: 14px; border: 1px solid var(--border); box-sizing: border-box; font-size: 16px; -webkit-appearance: none; background: var(--surface); color: var(--text-main); font-family: inherit; }
         textarea { resize: vertical; }
 
         .checkbox-container { display: flex; align-items: center; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 20px; }
@@ -90,7 +95,9 @@
         button.danger-btn { background: var(--danger); color: white; border: none; padding: 18px; border-radius: 14px; font-weight: 800; width: 100%; cursor: pointer; font-size: 16px; margin-top: 10px; transition: 0.2s; }
         button.danger-btn:active { transform: scale(0.97); }
 
-        #loadingOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(var(--surface-rgb), 0.9); z-index: 999; justify-content: center; align-items: center; font-weight: 800; color: var(--primary); }
+        #loadingOverlay { display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(var(--surface-rgb), 0.9); z-index: 999; justify-content: center; align-items: center; font-weight: 800; color: var(--primary); flex-direction: column; gap: 10px; }
+        .spinner { border: 4px solid var(--border); border-top: 4px solid var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         /* Drag and Drop Specific Styles */
         .sortable-ghost { opacity: 0.4; background: var(--bg); }
@@ -183,217 +190,255 @@
 </head>
 <body>
 
-    <div class="header">
-        <div class="header-info" style="display: flex; align-items: center; gap: 8px;">
-            <div style="margin-right: auto;">
-                <h2 onclick="handleTitleClick()">Assignments</h2>
-                <p>Academic Matrix</p>
+    <!-- AUTHENTICATION VIEW -->
+    <div id="auth-container">
+        <div class="auth-card">
+            <h2 style="margin: 0 0 5px 0; font-weight: 800; font-size: 28px;">Academic Matrix</h2>
+            <p style="color: var(--text-sub); font-size: 13px; margin-bottom: 24px; line-height: 1.5;">Sign in to securely sync your assignments and grades across all your devices.</p>
+            
+            <div style="text-align: left;">
+                <input type="email" id="authEmail" placeholder="Email Address" style="margin-bottom: 15px;">
+                <input type="password" id="authPassword" placeholder="Password" style="margin-bottom: 15px;" onkeypress="if(event.key==='Enter') handleAuth(false)">
             </div>
+            
+            <div id="authError" style="color: var(--danger); font-size: 13px; font-weight: 700; margin-bottom: 15px; min-height: 15px;"></div>
+            
+            <button class="primary-btn" onclick="handleAuth(false)" style="margin-top: 0; margin-bottom: 10px;">Log In</button>
+            <button class="primary-btn" onclick="handleAuth(true)" style="background: var(--surface); color: var(--primary); border: 2px solid var(--primary); margin-top: 0;">Create Free Account</button>
+
+            <div style="margin: 20px 0; display: flex; align-items: center; justify-content: center;">
+                <div style="height: 1px; background: var(--border); flex: 1;"></div>
+                <span style="padding: 0 10px; color: var(--text-sub); font-size: 12px; font-weight: 700; text-transform: uppercase;">Or</span>
+                <div style="height: 1px; background: var(--border); flex: 1;"></div>
+            </div>
+            
+            <button class="primary-btn" onclick="handleGoogleAuth()" style="background: var(--surface); color: var(--text-main); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 0;">
+                <svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                Continue with Google
+            </button>
         </div>
-        <div id="connectionStatus" class="connection-pill status-cloud">Connecting...</div>
     </div>
 
-    <div id="view-matrix" class="view-container active-view">
-        <div class="dashboard-stats">
-            <div class="stat-card"><p class="stat-val" id="stat-total">0</p><p class="stat-label">Pending</p></div>
-            <div class="stat-card"><p class="stat-val stat-urgent" id="stat-urgent" style="color:var(--danger);">0</p><p class="stat-label">Due Today</p></div>
-            <div class="stat-card" onclick="handleStreakClick()" style="cursor: pointer;"><p class="stat-val" id="stat-streak" style="color:var(--warning);">0</p><p class="stat-label">Streak 🔥</p></div>
-        </div>
+    <!-- MAIN APP WRAPPER -->
+    <div id="app-container" style="display: none;">
         
-        <div style="display: flex; gap: 10px; margin-bottom: 12px; width: 100%;">
-            <input type="text" id="searchInput" placeholder="Search assignments or #tags..." oninput="buildTaskList()" style="flex: 1; padding: 12px 14px; border-radius: 12px; font-size: 14px;">
-            <button id="focusBtn" onclick="toggleFocusMode()" style="padding: 0 16px; border-radius: 12px; background: var(--surface); color: var(--text-sub); border: 1px solid var(--border); font-weight: 800; font-size: 14px; cursor: pointer; transition: 0.2s; white-space: nowrap;">🎯 Focus</button>
-        </div>
-
-        <div style="display: flex; gap: 10px; margin-bottom: 12px; width: 100%; box-sizing: border-box;">
-            <select id="sortMode" onchange="changeSortMode()" style="flex: 1; min-width: 0; padding: 10px; border-radius: 12px; font-size: 13px; font-weight: 800;">
-                <option value="date">📅 By Date</option>
-                <option value="subject">📚 By Subject</option>
-                <option value="type">🏷️ By Classification</option>
-            </select>
-            <select id="secondaryFilter" onchange="changeSecondaryFilter()" style="flex: 1; min-width: 0; padding: 10px; border-radius: 12px; font-size: 13px; font-weight: 800;">
-            </select>
-        </div>
-        
-        <div id="subjectFilters" class="subject-filters" style="margin-bottom: 15px; width: 100%;"></div>
-        
-        <div id="taskList"></div>
-    </div>
-
-    <!-- WEEKLY STATS VIEW -->
-    <div id="view-stats" class="view-container">
-        <div style="text-align: center; margin-bottom: 24px;">
-            <div style="font-size: 48px; margin-bottom: 10px;">📈</div>
-            <h3 style="margin: 0; font-weight: 800;">Analytics Dashboard</h3>
-            <p style="color: var(--text-sub); font-size: 13px; margin-top: 5px;">Your performance over time.</p>
-        </div>
-        
-        <!-- Analytics Timeframe Toggle -->
-        <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 20px;">
-            <button id="btn7d" onclick="setAnalyticsTimeframe('7d')" style="padding: 8px 20px; border-radius: 20px; background: var(--primary); color: white; border: none; font-weight: 800; font-size: 12px; cursor: pointer; transition: 0.2s;">7 Days</button>
-            <button id="btn90d" onclick="setAnalyticsTimeframe('90d')" style="padding: 8px 20px; border-radius: 20px; background: var(--surface); color: var(--text-sub); border: 1px solid var(--border); font-weight: 800; font-size: 12px; cursor: pointer; transition: 0.2s;">3 Months</button>
-        </div>
-
-        <div class="dashboard-stats" style="grid-template-columns: 1fr 1fr 1fr;">
-            <div class="stat-card">
-                <p class="stat-val" id="statsTotalTimeframe" style="color: var(--primary);">0</p>
-                <p class="stat-label" id="lblTotalDone">Done (7d)</p>
+        <div class="header">
+            <div class="header-info" style="display: flex; align-items: center; gap: 8px;">
+                <div style="margin-right: auto;">
+                    <h2>Assignments</h2>
+                    <p>Academic Matrix</p>
+                </div>
             </div>
-            <div class="stat-card">
-                <p class="stat-val" id="statsAvg">0</p>
-                <p class="stat-label" id="lblAvg">Avg/Day</p>
+            <div id="connectionStatus" class="connection-pill status-cloud" onclick="logout()" title="Tap to Log Out">Connected</div>
+        </div>
+
+        <div id="view-matrix" class="view-container active-view">
+            <div class="dashboard-stats">
+                <div class="stat-card"><p class="stat-val" id="stat-total">0</p><p class="stat-label">Pending</p></div>
+                <div class="stat-card"><p class="stat-val stat-urgent" id="stat-urgent" style="color:var(--danger);">0</p><p class="stat-label">Due Today</p></div>
+                <div class="stat-card" onclick="handleStreakClick()" style="cursor: pointer;"><p class="stat-val" id="stat-streak" style="color:var(--warning);">0</p><p class="stat-label">Streak 🔥</p></div>
             </div>
-            <div class="stat-card">
-                <p class="stat-val" id="statsOnTime" style="color: var(--success);">0%</p>
-                <p class="stat-label">On-Time</p>
+            
+            <div style="display: flex; gap: 10px; margin-bottom: 12px; width: 100%;">
+                <input type="text" id="searchInput" placeholder="Search assignments or #tags..." oninput="buildTaskList()" style="flex: 1; padding: 12px 14px; border-radius: 12px; font-size: 14px;">
+                <button id="focusBtn" onclick="toggleFocusMode()" style="padding: 0 16px; border-radius: 12px; background: var(--surface); color: var(--text-sub); border: 1px solid var(--border); font-weight: 800; font-size: 14px; cursor: pointer; transition: 0.2s; white-space: nowrap;">🎯 Focus</button>
             </div>
-        </div>
 
-        <div class="chart-container">
-            <h4 style="margin: 0 0 15px 0; font-weight: 800; font-size: 14px; color: var(--text-sub); text-transform: uppercase;">Activity History</h4>
-            <canvas id="historyChart" style="max-height: 220px;"></canvas>
-        </div>
-
-        <div class="chart-container">
-            <h4 style="margin: 0 0 15px 0; font-weight: 800; font-size: 14px; color: var(--text-sub); text-transform: uppercase;">Focus Distribution</h4>
-            <canvas id="subjectChart" style="max-height: 220px;"></canvas>
-            <p id="noDataSubject" style="display:none; text-align:center; color: var(--text-sub); font-size: 12px; margin-top: 20px;">No assignments completed recently.</p>
-        </div>
-    </div>
-
-    <!-- GRADE CALCULATOR VIEW (HIERARCHICAL) -->
-    <div id="view-grade" class="view-container">
-        <div style="text-align: center; margin-bottom: 24px;">
-            <div style="font-size: 48px; margin-bottom: 10px;">💯</div>
-            <h3 style="margin: 0; font-weight: 800;">Grade Calculator</h3>
-            <p style="color: var(--text-sub); font-size: 13px; margin-top: 5px;">Track courses, weighted categories & assignments.</p>
-        </div>
-
-        <div id="gradeCourseList"></div>
-
-        <button class="primary-btn" style="background: var(--surface); color: var(--primary); border: 2px dashed var(--primary); margin-top: 15px;" onclick="addGradeCourse()">+ Add Course</button>
-    </div>
-
-    <!-- GPA CALCULATOR VIEW -->
-    <div id="view-gpa" class="view-container">
-        <div style="text-align: center; margin-bottom: 24px;">
-            <div style="font-size: 48px; margin-bottom: 10px;">🎓</div>
-            <h3 style="margin: 0; font-weight: 800;">GPA Calculator</h3>
-            <p style="color: var(--text-sub); font-size: 13px; margin-top: 5px;">Track term and cumulative GPA.</p>
-        </div>
-
-        <div class="stat-card" style="margin-bottom: 20px; padding: 20px; background: var(--primary); border: none;">
-            <p class="stat-val" id="gpaTotalDisplay" style="color: white; font-size: 42px;">0.00</p>
-            <p class="stat-label" style="color: rgba(255, 255, 255, 0.8);">Cumulative GPA</p>
-        </div>
-
-        <div style="background: var(--surface); padding: 15px; border-radius: 14px; border: 1px solid var(--border); margin-bottom: 20px;">
-            <h4 style="margin: 0 0 10px 0; font-size: 12px; font-weight: 800; text-transform: uppercase; color: var(--text-sub);">Prior Academic History (Optional)</h4>
-            <div style="display: flex; gap: 10px;">
-                <input type="number" id="priorCredits" placeholder="Prior Credits" onchange="updatePriorGpa()" style="flex: 1; padding: 12px; font-size: 14px;">
-                <input type="number" id="priorGpa" placeholder="Prior GPA" onchange="updatePriorGpa()" step="0.01" style="flex: 1; padding: 12px; font-size: 14px;">
-            </div>
-        </div>
-
-        <div id="gpaSemesterList"></div>
-
-        <button class="primary-btn" style="background: var(--surface); color: var(--text-main); border: 2px dashed var(--border); margin-top: 15px;" onclick="addGpaSemester()">+ Add Semester</button>
-    </div>
-
-    <!-- RECYCLE BIN VIEW -->
-    <div id="view-bin" class="view-container">
-        <div style="text-align: center; margin-bottom: 20px;">
-            <div style="font-size: 48px; margin-bottom: 10px;">♻️</div>
-            <h3 style="margin: 0; font-weight: 800;">Recycle Bin</h3>
-            <p style="color: var(--text-sub); font-size: 13px; margin-top: 5px;">View completed/deleted tasks. Recover to dashboard as templates.</p>
-            <button onclick="emptyBin()" style="background: var(--surface); color: var(--danger); border: 1px solid var(--danger); padding: 8px 16px; border-radius: 12px; font-size: 12px; font-weight: 800; margin-top: 10px; cursor: pointer;">Empty Bin Now</button>
-        </div>
-        <div id="binList"></div>
-    </div>
-
-    <div id="view-create" class="view-container">
-        <div class="form-group"><label>Title</label><input type="text" id="taskTitle" placeholder="e.g. Signal Processing Lab"></div>
-        <div class="form-group"><label>Subject</label><input type="text" id="taskSubject" placeholder="e.g. EE 301"></div>
-        <div class="form-group"><label>Classification</label>
-            <select id="taskType">
-                <option value="Assignment">📄 Assignment</option>
-                <option value="Quiz">🧠 Quiz</option>
-                <option value="Exam">🎯 Exam</option>
-                <option value="Lab Report">🔬 Lab Report</option>
-                <option value="Study">📚 Study</option>
-            </select>
-        </div>
-        <div class="form-group"><label>Target Date & Time</label><input type="datetime-local" id="taskDue"></div>
-        <div class="form-group"><label>Priority Condition</label>
-            <select id="taskPriority">
-                <option value="Normal">Normal</option>
-                <option value="High">High</option>
-                <option value="Critical">Critical</option>
-            </select>
-        </div>
-
-        <div class="form-group">
-            <label>Checklist / Sub-tasks (Optional)</label>
-            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                <input type="text" id="subtaskInput" placeholder="Add a step and tap +" onkeypress="if(event.key==='Enter') addSubtaskFromForm()" style="flex: 1;">
-                <button type="button" onclick="addSubtaskFromForm()" style="background: var(--primary); color: white; border: none; border-radius: 14px; width: 50px; font-size: 24px; font-weight: bold; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center;">+</button>
-            </div>
-            <div id="builderList" style="background: var(--surface); border-radius: 14px; border: 1px solid var(--border); display: none; overflow: hidden;"></div>
-        </div>
-
-        <div class="form-group">
-            <label>Custom Tags (Optional)</label>
-            <input type="text" id="taskTags" placeholder="e.g. group-project, extra-credit (comma separated)">
-        </div>
-
-        <div class="form-group">
-            <label>Notes & Links (Optional)</label>
-            <textarea id="taskNotes" rows="3" placeholder="Add syllabus details, Zoom links, or instructions..."></textarea>
-        </div>
-
-        <div class="checkbox-container">
-            <input type="checkbox" id="taskRecurring" onchange="toggleRecur()">
-            <label for="taskRecurring" style="margin:0; text-transform:none; font-size:14px; font-weight:600;">Enable Recurring Cycle</label>
-        </div>
-        
-        <div id="recurSettings" style="display: none; background: var(--bg); padding: 15px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px;">
-            <div class="form-group"><label>Interval</label>
-                <select id="taskInterval">
-                    <option value="Weekly">Weekly</option>
-                    <option value="Daily">Daily</option>
-                    <option value="Bi-Weekly">Bi-Weekly</option>
+            <div style="display: flex; gap: 10px; margin-bottom: 12px; width: 100%; box-sizing: border-box;">
+                <select id="sortMode" onchange="changeSortMode()" style="flex: 1; min-width: 0; padding: 10px; border-radius: 12px; font-size: 13px; font-weight: 800;">
+                    <option value="date">📅 By Date</option>
+                    <option value="subject">📚 By Subject</option>
+                    <option value="type">🏷️ By Classification</option>
+                </select>
+                <select id="secondaryFilter" onchange="changeSecondaryFilter()" style="flex: 1; min-width: 0; padding: 10px; border-radius: 12px; font-size: 13px; font-weight: 800;">
                 </select>
             </div>
-            <div class="form-group" style="margin-bottom:0;"><label>Cycle Expiration (Optional)</label><input type="datetime-local" id="taskRecurUntil"></div>
+            
+            <div id="subjectFilters" class="subject-filters" style="margin-bottom: 15px; width: 100%;"></div>
+            
+            <div id="taskList"></div>
         </div>
 
-        <div class="checkbox-container special-checkbox" id="editOccurGroup" style="display: none;">
-            <input type="checkbox" id="taskThisOccurOnly">
-            <label for="taskThisOccurOnly" style="margin:0; text-transform:none; font-size:14px; font-weight:700; color:var(--primary);">Edit this occurrence only</label>
+        <!-- WEEKLY STATS VIEW -->
+        <div id="view-stats" class="view-container">
+            <div style="text-align: center; margin-bottom: 24px;">
+                <div style="font-size: 48px; margin-bottom: 10px;">📈</div>
+                <h3 style="margin: 0; font-weight: 800;">Analytics Dashboard</h3>
+                <p style="color: var(--text-sub); font-size: 13px; margin-top: 5px;">Your performance over time.</p>
+            </div>
+            
+            <!-- Analytics Timeframe Toggle -->
+            <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 20px;">
+                <button id="btn7d" onclick="setAnalyticsTimeframe('7d')" style="padding: 8px 20px; border-radius: 20px; background: var(--primary); color: white; border: none; font-weight: 800; font-size: 12px; cursor: pointer; transition: 0.2s;">7 Days</button>
+                <button id="btn90d" onclick="setAnalyticsTimeframe('90d')" style="padding: 8px 20px; border-radius: 20px; background: var(--surface); color: var(--text-sub); border: 1px solid var(--border); font-weight: 800; font-size: 12px; cursor: pointer; transition: 0.2s;">3 Months</button>
+            </div>
+
+            <div class="dashboard-stats" style="grid-template-columns: 1fr 1fr 1fr;">
+                <div class="stat-card">
+                    <p class="stat-val" id="statsTotalTimeframe" style="color: var(--primary);">0</p>
+                    <p class="stat-label" id="lblTotalDone">Done (7d)</p>
+                </div>
+                <div class="stat-card">
+                    <p class="stat-val" id="statsAvg">0</p>
+                    <p class="stat-label" id="lblAvg">Avg/Day</p>
+                </div>
+                <div class="stat-card">
+                    <p class="stat-val" id="statsOnTime" style="color: var(--success);">0%</p>
+                    <p class="stat-label">On-Time</p>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h4 style="margin: 0 0 15px 0; font-weight: 800; font-size: 14px; color: var(--text-sub); text-transform: uppercase;">Activity History</h4>
+                <canvas id="historyChart" style="max-height: 220px;"></canvas>
+            </div>
+
+            <div class="chart-container">
+                <h4 style="margin: 0 0 15px 0; font-weight: 800; font-size: 14px; color: var(--text-sub); text-transform: uppercase;">Focus Distribution</h4>
+                <canvas id="subjectChart" style="max-height: 220px;"></canvas>
+                <p id="noDataSubject" style="display:none; text-align:center; color: var(--text-sub); font-size: 12px; margin-top: 20px;">No assignments completed recently.</p>
+            </div>
         </div>
 
-        <button class="primary-btn" id="deployBtn" onclick="submitToMatrix()">Deploy to Matrix</button>
-        <button class="danger-btn" id="deleteBtn" style="display: none;" onclick="sendToBin()">Delete Task</button>
+        <!-- GRADE CALCULATOR VIEW (HIERARCHICAL) -->
+        <div id="view-grade" class="view-container">
+            <div style="text-align: center; margin-bottom: 24px;">
+                <div style="font-size: 48px; margin-bottom: 10px;">💯</div>
+                <h3 style="margin: 0; font-weight: 800;">Grade Calculator</h3>
+                <p style="color: var(--text-sub); font-size: 13px; margin-top: 5px;">Track courses, weighted categories & assignments.</p>
+            </div>
+
+            <div id="gradeCourseList"></div>
+
+            <button class="primary-btn" style="background: var(--surface); color: var(--primary); border: 2px dashed var(--primary); margin-top: 15px;" onclick="addGradeCourse()">+ Add Course</button>
+        </div>
+
+        <!-- GPA CALCULATOR VIEW -->
+        <div id="view-gpa" class="view-container">
+            <div style="text-align: center; margin-bottom: 24px;">
+                <div style="font-size: 48px; margin-bottom: 10px;">🎓</div>
+                <h3 style="margin: 0; font-weight: 800;">GPA Calculator</h3>
+                <p style="color: var(--text-sub); font-size: 13px; margin-top: 5px;">Track term and cumulative GPA.</p>
+            </div>
+
+            <div class="stat-card" style="margin-bottom: 20px; padding: 20px; background: var(--primary); border: none;">
+                <p class="stat-val" id="gpaTotalDisplay" style="color: white; font-size: 42px;">0.00</p>
+                <p class="stat-label" style="color: rgba(255, 255, 255, 0.8);">Cumulative GPA</p>
+            </div>
+
+            <div style="background: var(--surface); padding: 15px; border-radius: 14px; border: 1px solid var(--border); margin-bottom: 20px;">
+                <h4 style="margin: 0 0 10px 0; font-size: 12px; font-weight: 800; text-transform: uppercase; color: var(--text-sub);">Prior Academic History (Optional)</h4>
+                <div style="display: flex; gap: 10px;">
+                    <input type="number" id="priorCredits" placeholder="Prior Credits" onchange="updatePriorGpa()" style="flex: 1; padding: 12px; font-size: 14px;">
+                    <input type="number" id="priorGpa" placeholder="Prior GPA" onchange="updatePriorGpa()" step="0.01" style="flex: 1; padding: 12px; font-size: 14px;">
+                </div>
+            </div>
+
+            <div id="gpaSemesterList"></div>
+
+            <button class="primary-btn" style="background: var(--surface); color: var(--text-main); border: 2px dashed var(--border); margin-top: 15px;" onclick="addGpaSemester()">+ Add Semester</button>
+        </div>
+
+        <!-- RECYCLE BIN VIEW -->
+        <div id="view-bin" class="view-container">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <div style="font-size: 48px; margin-bottom: 10px;">♻️</div>
+                <h3 style="margin: 0; font-weight: 800;">Recycle Bin</h3>
+                <p style="color: var(--text-sub); font-size: 13px; margin-top: 5px;">View completed/deleted tasks. Recover to dashboard as templates.</p>
+                <button onclick="emptyBin()" style="background: var(--surface); color: var(--danger); border: 1px solid var(--danger); padding: 8px 16px; border-radius: 12px; font-size: 12px; font-weight: 800; margin-top: 10px; cursor: pointer;">Empty Bin Now</button>
+            </div>
+            <div id="binList"></div>
+        </div>
+
+        <!-- CREATE TASK VIEW -->
+        <div id="view-create" class="view-container">
+            <div class="form-group"><label>Title</label><input type="text" id="taskTitle" placeholder="e.g. Signal Processing Lab"></div>
+            <div class="form-group"><label>Subject</label><input type="text" id="taskSubject" placeholder="e.g. EE 301"></div>
+            <div class="form-group"><label>Classification</label>
+                <select id="taskType">
+                    <option value="Assignment">📄 Assignment</option>
+                    <option value="Quiz">🧠 Quiz</option>
+                    <option value="Exam">🎯 Exam</option>
+                    <option value="Lab Report">🔬 Lab Report</option>
+                    <option value="Study">📚 Study</option>
+                </select>
+            </div>
+            <div class="form-group"><label>Target Date & Time</label><input type="datetime-local" id="taskDue"></div>
+            <div class="form-group"><label>Priority Condition</label>
+                <select id="taskPriority">
+                    <option value="Normal">Normal</option>
+                    <option value="High">High</option>
+                    <option value="Critical">Critical</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Checklist / Sub-tasks (Optional)</label>
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <input type="text" id="subtaskInput" placeholder="Add a step and tap +" onkeypress="if(event.key==='Enter') addSubtaskFromForm()" style="flex: 1;">
+                    <button type="button" onclick="addSubtaskFromForm()" style="background: var(--primary); color: white; border: none; border-radius: 14px; width: 50px; font-size: 24px; font-weight: bold; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center;">+</button>
+                </div>
+                <div id="builderList" style="background: var(--surface); border-radius: 14px; border: 1px solid var(--border); display: none; overflow: hidden;"></div>
+            </div>
+
+            <div class="form-group">
+                <label>Custom Tags (Optional)</label>
+                <input type="text" id="taskTags" placeholder="e.g. group-project, extra-credit (comma separated)">
+            </div>
+
+            <div class="form-group">
+                <label>Notes & Links (Optional)</label>
+                <textarea id="taskNotes" rows="3" placeholder="Add syllabus details, Zoom links, or instructions..."></textarea>
+            </div>
+
+            <div class="checkbox-container">
+                <input type="checkbox" id="taskRecurring" onchange="toggleRecur()">
+                <label for="taskRecurring" style="margin:0; text-transform:none; font-size:14px; font-weight:600;">Enable Recurring Cycle</label>
+            </div>
+            
+            <div id="recurSettings" style="display: none; background: var(--bg); padding: 15px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px;">
+                <div class="form-group"><label>Interval</label>
+                    <select id="taskInterval">
+                        <option value="Weekly">Weekly</option>
+                        <option value="Daily">Daily</option>
+                        <option value="Bi-Weekly">Bi-Weekly</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom:0;"><label>Cycle Expiration (Optional)</label><input type="datetime-local" id="taskRecurUntil"></div>
+            </div>
+
+            <div class="checkbox-container special-checkbox" id="editOccurGroup" style="display: none;">
+                <input type="checkbox" id="taskThisOccurOnly">
+                <label for="taskThisOccurOnly" style="margin:0; text-transform:none; font-size:14px; font-weight:700; color:var(--primary);">Edit this occurrence only</label>
+            </div>
+
+            <button class="primary-btn" id="deployBtn" onclick="submitToMatrix()">Deploy to Matrix</button>
+            <button class="danger-btn" id="deleteBtn" style="display: none;" onclick="sendToBin()">Delete Task</button>
+        </div>
+
+        <!-- Left Floating Tools Group -->
+        <div class="left-fab-group" id="leftTools">
+            <button class="fab-mini" onclick="switchNavTab('stats')" title="Weekly Stats">📊</button>
+            <button class="fab-mini" onclick="switchNavTab('grade')" title="Grade Calculator">💯</button>
+            <button class="fab-mini" onclick="switchNavTab('gpa')" title="GPA Calculator">🎓</button>
+            <button class="fab-mini" onclick="switchNavTab('bin')" title="Recycle Bin">🗑️</button>
+            <button class="fab-mini" onclick="toggleDarkMode()" title="Dark Mode" id="darkModeFab">🌙</button>
+        </div>
+
+        <!-- Right Floating Action Button (Add Task) -->
+        <button class="fab" id="mainFab" onclick="toggleView()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+        </button>
+
+    </div> <!-- END APP WRAPPER -->
+
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+        <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-top: 10px;">Connecting to Matrix...</div>
     </div>
-
-    <!-- Left Floating Tools Group -->
-    <div class="left-fab-group" id="leftTools">
-        <button class="fab-mini" onclick="switchNavTab('stats')" title="Weekly Stats">📊</button>
-        <button class="fab-mini" onclick="switchNavTab('grade')" title="Grade Calculator">💯</button>
-        <button class="fab-mini" onclick="switchNavTab('gpa')" title="GPA Calculator">🎓</button>
-        <button class="fab-mini" onclick="switchNavTab('bin')" title="Recycle Bin">🗑️</button>
-        <button class="fab-mini" onclick="toggleDarkMode()" title="Dark Mode" id="darkModeFab">🌙</button>
-    </div>
-
-    <!-- Right Floating Action Button (Add Task) -->
-    <button class="fab" id="mainFab" onclick="toggleView()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-    </button>
-
-    <div id="loadingOverlay">Syncing Data...</div>
 
     <script>
         const GITHUB_URL = "https://victoriakanbi.github.io/assignment-tracker/";
@@ -409,8 +454,8 @@
         const firebaseConfig = { databaseURL: "https://fluxgate-victor-default-rtdb.firebaseio.com" };
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
+        const auth = firebase.auth();
         
-        let API_KEY = localStorage.getItem('matrix_api_key');
         let DATABASE_ID = null; 
         
         let editingTaskId = null;
@@ -428,25 +473,148 @@
         
         let focusMode = false;
         let isDarkMode = localStorage.getItem('matrix_dark_mode') === 'true';
-        let analyticsTimeframe = '7d'; // '7d' or '90d'
+        let analyticsTimeframe = '7d'; 
+        let isAuthInitialized = false;
 
         const subjectColors = ['#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
         
-        // Chart Objects
         let historyChart = null;
         let subjectChart = null;
 
-        // Core Task Routing Engine (Bullet-proof implementation of single explicit state)
+        // AUTHENTICATION LOGIC
+        auth.onAuthStateChanged(async (user) => {
+            if (!isAuthInitialized) {
+                document.getElementById('loadingOverlay').style.display = 'flex';
+            }
+
+            if (user) {
+                // Check for old loose data and migrate if necessary
+                await checkAndMigrateOldData(user);
+
+                if (DATABASE_ID) database.ref(DATABASE_ID).off(); // Unsubscribe old listeners just in case
+                
+                DATABASE_ID = 'users/' + user.uid;
+                
+                document.getElementById('auth-container').style.display = 'none';
+                document.getElementById('app-container').style.display = 'block';
+                document.getElementById('connectionStatus').innerText = "Logout";
+                document.getElementById('connectionStatus').className = "connection-pill status-cloud";
+
+                startAppListeners();
+            } else {
+                DATABASE_ID = null;
+                globalTaskData = null;
+                globalGpaData = {};
+                globalGradeData = {};
+                
+                document.getElementById('auth-container').style.display = 'flex';
+                document.getElementById('app-container').style.display = 'none';
+            }
+
+            if (!isAuthInitialized) {
+                document.getElementById('loadingOverlay').style.display = 'none';
+                isAuthInitialized = true;
+            }
+        });
+
+        function handleAuth(isSignUp) {
+            const email = document.getElementById('authEmail').value;
+            const pass = document.getElementById('authPassword').value;
+            const errEl = document.getElementById('authError');
+            errEl.innerText = '';
+            
+            if (!email || !pass) {
+                errEl.innerText = "Email and password are required.";
+                return;
+            }
+            
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            
+            if (isSignUp) {
+                auth.createUserWithEmailAndPassword(email, pass).catch(e => {
+                    errEl.innerText = e.message;
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                });
+            } else {
+                auth.signInWithEmailAndPassword(email, pass).catch(e => {
+                    errEl.innerText = e.message;
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                });
+            }
+        }
+
+        function handleGoogleAuth() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            document.getElementById('authError').innerText = '';
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider).catch(e => {
+                document.getElementById('authError').innerText = e.message;
+                document.getElementById('loadingOverlay').style.display = 'none';
+            });
+        }
+
+        function logout() {
+            if (confirm("Are you sure you want to log out?")) {
+                auth.signOut();
+            }
+        }
+
+        // NON-DISRUPTIVE MIGRATION ENGINE
+        async function checkAndMigrateOldData(user) {
+            let oldApiKey = localStorage.getItem('matrix_api_key');
+            if (oldApiKey) {
+                try {
+                    // Check if new user node already has data so we don't accidentally overwrite
+                    const userDataSnap = await database.ref('users/' + user.uid).once('value');
+                    if (!userDataSnap.exists()) {
+                        // Find the old vault
+                        const snap = await database.ref('Gatekeeper/' + oldApiKey).once('value');
+                        const oldVaultId = snap.val();
+                        if (oldVaultId) {
+                            const oldDataSnap = await database.ref(oldVaultId).once('value');
+                            const oldData = oldDataSnap.val();
+                            if (oldData) {
+                                // Transfer data to new secure node
+                                await database.ref('users/' + user.uid).set(oldData);
+                            }
+                        }
+                    }
+                } catch(e) {
+                    console.error("Migration Error:", e);
+                }
+                // Wipe local storage so it never triggers again
+                localStorage.removeItem('matrix_api_key');
+            }
+        }
+
+        function startAppListeners() {
+            database.ref(DATABASE_ID + '/tasks').on('value', (snap) => {
+                renderTasks(snap.val());
+            });
+
+            database.ref(DATABASE_ID + '/streak').on('value', sSnap => {
+                globalStreak = sSnap.val() || { current: 0, lastDate: '' };
+                buildTaskList();
+            });
+
+            database.ref(DATABASE_ID + '/gpa').on('value', snap => {
+                globalGpaData = snap.val() || {};
+                if (currentView === 'gpa') renderGpaView();
+            });
+
+            database.ref(DATABASE_ID + '/grades').on('value', snap => {
+                globalGradeData = snap.val() || {};
+                if (currentView === 'grade') renderGradeView();
+            });
+        }
+
+        // Core Task Routing Engine 
         function getTaskState(t) {
             if (t.matrix_state) return t.matrix_state;
-            
-            // Legacy fallbacks for older tasks
             if (t.location) {
                 if (t.location === 'dashboard') return 'active';
                 if (t.location === 'archive') return 'archived';
-                if (t.location === 'bin') {
-                    return t.status === 'deleted' ? 'deleted' : 'completed';
-                }
+                if (t.location === 'bin') { return t.status === 'deleted' ? 'deleted' : 'completed'; }
             }
             if (t.pending_completion) {
                 if (t.bin_hidden) return 'archived';
@@ -601,71 +769,6 @@
             }
         }
 
-        let titleClickCount = 0, titleClickTimer = null;
-        function handleTitleClick() {
-            titleClickCount++; clearTimeout(titleClickTimer);
-            if (titleClickCount >= 3) {
-                if(confirm("Reset Security Password?")) { localStorage.removeItem('matrix_api_key'); window.location.reload(); }
-                titleClickCount = 0;
-            }
-            titleClickTimer = setTimeout(() => { titleClickCount = 0; }, 500);
-        }
-
-        function getPassword() {
-            if (!API_KEY) {
-                API_KEY = prompt("Matrix Cloud Locked\nEnter Security Password:");
-                if (API_KEY) { localStorage.setItem('matrix_api_key', API_KEY); return true; }
-                document.getElementById('connectionStatus').innerText = "Locked";
-                document.getElementById('connectionStatus').className = "connection-pill status-error";
-                return false;
-            }
-            return true;
-        }
-
-        function initializeMatrix() {
-            if (!getPassword()) return;
-
-            database.ref('Gatekeeper/' + API_KEY).once('value').then(snap => {
-                const vaultPointer = snap.val();
-                if (vaultPointer) {
-                    DATABASE_ID = vaultPointer;
-                    document.getElementById('connectionStatus').innerText = "Cloud Sync Active";
-                    document.getElementById('connectionStatus').className = "connection-pill status-cloud";
-                    
-                    startTaskListener();
-
-                    database.ref(DATABASE_ID + '/streak').on('value', sSnap => {
-                        globalStreak = sSnap.val() || { current: 0, lastDate: '' };
-                        buildTaskList();
-                    });
-
-                    database.ref(DATABASE_ID + '/gpa').on('value', snap => {
-                        globalGpaData = snap.val() || {};
-                        if (currentView === 'gpa') renderGpaView();
-                    });
-
-                    database.ref(DATABASE_ID + '/grades').on('value', snap => {
-                        globalGradeData = snap.val() || {};
-                        if (currentView === 'grade') renderGradeView();
-                    });
-                } else {
-                    alert("Password Incorrect or Changed. Access Denied.");
-                    localStorage.removeItem('matrix_api_key');
-                    window.location.reload();
-                }
-            }).catch(err => {
-                alert("Gatekeeper Error: Permission Denied.");
-                localStorage.removeItem('matrix_api_key');
-                window.location.reload();
-            });
-        }
-
-        function startTaskListener() {
-            database.ref(DATABASE_ID + '/tasks').on('value', (snap) => {
-                renderTasks(snap.val());
-            });
-        }
-
         function filterBySubject(sub) {
             activeSubjectFilter = sub;
             buildTaskList();
@@ -679,7 +782,6 @@
             if (currentView === 'stats') buildStatsView();
         }
 
-        // Timer-Based Cleanup relying strictly on new explicit matrix_state 
         function cleanupBin() {
             if (!globalTaskData || !DATABASE_ID) return;
             const now = Date.now();
@@ -1271,7 +1373,6 @@
             if (!DATABASE_ID) return;
             document.getElementById('loadingOverlay').style.display = 'flex';
             
-            // Explicitly force states to migrated to destroy legacy overlapping data ghosts
             await database.ref(DATABASE_ID + '/tasks/' + taskId).update({
                 matrix_state: 'active',
                 bin_timestamp: 0,
@@ -1354,12 +1455,10 @@
                 return; 
             }
             
-            // Explicitly filter for Dashboard
             let allTasks = Object.keys(data)
                 .map(k => ({id: k, ...data[k]}))
                 .filter(t => getTaskState(t) === 'active');
 
-            // Filter Focus Mode
             let now = new Date();
             let todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
             let lookaheadEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + lookaheadDays, 23, 59, 59);
@@ -1368,7 +1467,6 @@
                 allTasks = allTasks.filter(t => new Date(t.due) <= todayEnd || t.priority === 'Critical');
             }
 
-            // Filter Search Query
             const searchInput = document.getElementById('searchInput');
             if (searchInput && searchInput.value.trim() !== '') {
                 const q = searchInput.value.toLowerCase().trim();
@@ -1392,7 +1490,6 @@
             else if (sortMode === 'type') populateSecondaryFilter(types);
             else populateSecondaryFilter([]); 
 
-            // Color Coded Pills
             filterContainer.innerHTML = subjects.map(s => 
                 `<div class="subject-pill ${s === activeSubjectFilter ? 'active' : ''}" onclick="filterBySubject('${s.replace(/'/g, "\\'")}')">
                     ${s !== 'All' ? `<span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${getSubjectColor(s)}; margin-right:6px;"></span>` : ''}${s}
@@ -1697,7 +1794,6 @@
             if (!confirm("Move this task to the Recycle Bin?")) return;
             
             document.getElementById('loadingOverlay').style.display = 'flex';
-            // Explicitly force states to migrated to destroy legacy overlapping data ghosts
             await database.ref(DATABASE_ID + '/tasks/' + editingTaskId).update({ 
                 matrix_state: 'deleted',
                 bin_timestamp: Date.now(),
@@ -1771,7 +1867,6 @@
 
             setTimeout(async () => {
                 document.getElementById('loadingOverlay').style.display = 'flex';
-                // Explicitly force states to migrated to destroy legacy overlapping data ghosts
                 await database.ref(DATABASE_ID + '/tasks/' + taskId).update({ 
                     matrix_state: 'completed',
                     bin_timestamp: Date.now(),
@@ -1818,8 +1913,6 @@
             if (t === 'matrix') clearForm(); 
             switchTabView(t);
         }
-
-        initializeMatrix();
     </script>
 </body>
 </html>
